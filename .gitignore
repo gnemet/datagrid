@@ -1,0 +1,10 @@
+# Binaries
+bin/
+testapp
+
+# Env
+.env
+
+# Go
+vendor/
+go.sum
