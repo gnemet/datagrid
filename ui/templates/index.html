@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/datagrid.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+</head>
+
+<body>
+    <div style="padding: 2rem;">
+        <h1>{{.Title}}</h1>
+        <p class="text-muted">A high-performance datagrid extracted from MIGR/JiraMntr.</p>
+        <hr class="mb-4">
+
+        {{template "datagrid_wrapper" .}}
+    </div>
+
+    <script src="/static/js/datagrid.js"></script>
+    <script>
+        // Set context for settings
+        window.datagridResource = 'personnel_demo';
+    </script>
+</body>
+
+</html>

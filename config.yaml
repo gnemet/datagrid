@@ -1,0 +1,22 @@
+application:
+  name: "datagrid"
+  version: "1.0.0"
+  environment: "development"
+  log_level: "debug"
+  author: "Gabor Nemet"
+
+server:
+  port: "8080"
+
+database:
+  - name: "local"
+    host: "${DB_HOST:localhost}"
+    port: "${DB_PORT:5433}"
+    user: "${DB_USER:root}"
+    password: "${DB_PASSWORD:soa123}"
+    database: "${DB_NAME:db01}"
+    schema: "${DB_SCHEMA:datagrid}"
+    default: true
+
+catalog:
+  path: "catalog/personnel.json"

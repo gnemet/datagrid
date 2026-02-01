@@ -1,0 +1,138 @@
+{
+    "version": "1.2",
+    "objects": [
+        {
+            "name": "personnel",
+            "type": "table",
+            "description": "Personnel records with multi-language LOV support.",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "BIGINT",
+                    "primary_key": true,
+                    "labels": {
+                        "en": "ID",
+                        "hu": "Azonosító"
+                    }
+                },
+                {
+                    "name": "is_valid",
+                    "type": "BOOL",
+                    "labels": {
+                        "en": "Valid",
+                        "hu": "Érvényes"
+                    },
+                    "lov": [
+                        {
+                            "value": "true",
+                            "label": {
+                                "en": "YES",
+                                "hu": "IGEN"
+                            }
+                        },
+                        {
+                            "value": "false",
+                            "label": {
+                                "en": "NO",
+                                "hu": "NEM"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "name",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Name",
+                        "hu": "Név"
+                    }
+                },
+                {
+                    "name": "email",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Email",
+                        "hu": "Email"
+                    }
+                },
+                {
+                    "name": "department",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Department",
+                        "hu": "Részleg"
+                    },
+                    "lov": "SELECT code AS value, name_{lang} AS label FROM lov_departments ORDER BY 2"
+                },
+                {
+                    "name": "salary",
+                    "type": "NUMERIC",
+                    "labels": {
+                        "en": "Salary",
+                        "hu": "Fizetés"
+                    }
+                },
+                {
+                    "name": "status",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Status",
+                        "hu": "Állapot"
+                    }
+                },
+                {
+                    "name": "data",
+                    "type": "JSONB",
+                    "labels": {
+                        "en": "Metadata",
+                        "hu": "Metaadat"
+                    }
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "columns": {
+            "id": {
+                "visible": true,
+                "labels": {
+                    "en": "ID",
+                    "hu": "AZ"
+                }
+            },
+            "is_valid": {
+                "visible": true
+            },
+            "name": {
+                "visible": true,
+                "labels": {
+                    "en": "Full Name",
+                    "hu": "Teljes név"
+                }
+            },
+            "email": {
+                "visible": true
+            },
+            "department": {
+                "visible": true
+            },
+            "salary": {
+                "visible": true,
+                "labels": {
+                    "en": "Earnings",
+                    "hu": "Kereset"
+                }
+            },
+            "status": {
+                "visible": true
+            },
+            "data": {
+                "visible": true,
+                "labels": {
+                    "en": "JSON Info",
+                    "hu": "JSON Infó"
+                }
+            }
+        }
+    }
+}

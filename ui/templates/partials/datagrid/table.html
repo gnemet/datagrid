@@ -1,0 +1,51 @@
+{{define "datagrid_table"}}
+<table class="meta-table">
+    <thead>
+        <tr>
+            {{range .UIColumns}}
+            <th class="{{if .Class}}{{.Class}}{{else}}col-{{.Field}}{{end}}{{if not .Visible}} hidden-col{{end}}"
+                title="{{.Label}}" 
+                data-field="{{.Field}}"
+                data-sortable="{{.Sortable}}">
+                {{if eq .Field "id"}}<i class="fas fa-fingerprint"></i>
+                {{else if eq .Type "status"}}<i class="fas fa-heartbeat"></i>
+                {{else if eq .Type "state"}}<i class="fas fa-toggle-on"></i>
+                {{else if eq .Type "latest"}}<i class="fas fa-clock"></i>
+                {{else}}{{.Label}}
+                {{end}}
+                <div class="resizer"></div>
+            </th>
+            {{end}}
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Records}}
+        <tr data-id="{{.id}}" data-json="{{._json}}">
+            {{$row := .}}
+            {{range $.UIColumns}}
+            <td class="{{if .Class}}{{.Class}}{{else}}col-{{.Field}}{{end}}{{if not .Visible}} hidden-col{{end}}">
+                {{if eq .Type "status"}}
+                <span class="badge badge-{{index $row .Field}}">{{index $row .Field}}</span>
+                {{else if eq .Type "json"}}
+                <code class="text-truncate-cell">{{index $row .Field}}</code>
+                {{else}}
+                {{index $row .Field}}
+                {{end}}
+            </td>
+            {{end}}
+        </tr>
+        {{else}}
+        <tr>
+            <td colspan="{{len .UIColumns}}" class="text-center text-muted">No records found</td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+
+<div id="pagination-metadata" class="hidden" 
+     data-total-count="{{.TotalCount}}" 
+     data-offset="{{.Offset}}"
+     data-limit="{{.Limit}}" 
+     hx-swap-oob="true">
+</div>
+{{end}}
