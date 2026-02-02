@@ -219,23 +219,21 @@ body {
     position: relative;
     display: flex;
     align-items: center;
-    background: rgba(0, 0, 0, 0.03);
+    background: var(--bg-secondary);
     border: 1px solid var(--dg-border);
-    border-radius: 20px;
-    /* Pill shape for premium feel */
-    padding: 0 15px;
+    border-radius: var(--radius-md, 4px);
+    padding: 0 12px;
     width: 320px;
     height: 38px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: border-color 0.2s;
 }
 
-[data-theme="dark"] .search-wrapper {
-    background: rgba(255, 255, 255, 0.05);
+.search-wrapper:focus-within {
+    border-color: var(--dg-accent);
 }
 
 .search-wrapper i {
-    color: var(--text-secondary);
-    opacity: 0.6;
+    color: var(--text-muted);
     font-size: 0.9rem;
     pointer-events: none;
 }
