@@ -278,7 +278,7 @@ function initEvents() {
     $(document).on('click', '.datagrid-table tbody tr', function (e) {
         if ($(e.target).closest('button, a, input, [data-action]').length) return;
 
-        $('.meta-table tbody tr').removeClass('selected');
+        $('.datagrid-table tbody tr').removeClass('selected');
         $(this).addClass('selected');
 
         const data = $(this).data('json');
@@ -332,6 +332,44 @@ function initEvents() {
         }
         saveSettings();
     });
+
+    // 6. Pagination
+    $(document).on('click', '#prev-page-btn', function () {
+        const offset = parseInt($('#offset-input').val()) || 0;
+        const limit = parseInt($('#limit-input').val()) || 20;
+        if (offset > 0) {
+            $('#offset-input').val(Math.max(0, offset - limit));
+            triggerPagination();
+        }
+    });
+
+    $(document).on('click', '#next-page-btn', function () {
+        const offset = parseInt($('#offset-input').val()) || 0;
+        const limit = parseInt($('#limit-input').val()) || 20;
+        const total = parseInt($('#pagination-metadata').data('total-count')) || 0;
+        if (offset + limit < total) {
+            $('#offset-input').val(offset + limit);
+            triggerPagination();
+        }
+    });
+
+    $(document).on('click', '#page-size-btn', function () {
+        const currentLimit = parseInt($('#limit-input').val()) || 20;
+        const sizes = [10, 20, 50, 100];
+        const nextIdx = (sizes.indexOf(currentLimit) + 1) % sizes.length;
+        const nextLimit = sizes[nextIdx];
+
+        $('#limit-input').val(nextLimit);
+        $('#offset-input').val(0); // Reset to page 1 on limit change
+        $(this).text(nextLimit);
+        triggerPagination();
+        saveSettings();
+    });
+}
+
+function triggerPagination() {
+    console.log('Triggering pagination. Limit:', $('#limit-input').val(), 'Offset:', $('#offset-input').val());
+    htmx.trigger('#datagrid-filter-form', 'submit');
 }
 
 function expandJSONKeys() {
@@ -378,7 +416,7 @@ function expandJSONKeys() {
         if (visibleFields.has(key)) return;
 
         // Add header
-        const $th = $(`<th class="col-dyn-key" data-field="dyn-${key}">
+        const $th = $(`<th class="col-dyn-key" data-field="dyn-${key}" draggable="true">
             <span class="dg-dyn-label">${key}</span>
             <div class="resizer"></div>
         </th>`);
@@ -392,15 +430,27 @@ function expandJSONKeys() {
             }
 
             const getValue = (obj, path) => {
-                return path.split('.').reduce((o, i) => {
-                    if (!o) return undefined;
-                    let val = o[i];
-                    // Attempt to parse string as JSON mid-path
-                    if (val && typeof val === 'string' && (val.startsWith('{') || val.startsWith('['))) {
-                        try { val = JSON.parse(val); } catch (e) { }
+                const parts = path.split('.');
+                let current = obj;
+
+                for (const part of parts) {
+                    if (current === undefined || current === null) return undefined;
+
+                    // If current is a string that looks like JSON, try to parse it
+                    if (typeof current === 'string' && (current.trim().startsWith('{') || current.trim().startsWith('['))) {
+                        try {
+                            current = JSON.parse(current);
+                        } catch (e) { }
                     }
-                    return val;
-                }, obj);
+
+                    // Proceed if it's an object
+                    if (typeof current === 'object' && current !== null) {
+                        current = current[part];
+                    } else {
+                        return undefined;
+                    }
+                }
+                return current;
             };
 
             const val = getValue(data, key);
@@ -419,6 +469,20 @@ document.body.addEventListener('htmx:configRequest', function (evt) {
 
 document.body.addEventListener('htmx:afterSwap', function (evt) {
     if (evt.target.id === 'datagrid-container' || evt.target.classList.contains('datagrid-table')) {
+        const $meta = $('#pagination-metadata');
+        if ($meta.length) {
+            const limit = $meta.data('limit');
+            const offset = $meta.data('offset');
+            $('#limit-input').val(limit);
+            $('#offset-input').val(offset);
+            $('#page-size-btn').text(limit);
+
+            // Update disabled states
+            const total = $meta.data('total-count');
+            $('#prev-page-btn').prop('disabled', offset <= 0);
+            $('#next-page-btn').prop('disabled', offset + limit >= total);
+        }
+
         applySettingsToTable();
         updateSortIcons();
         initColumnChooser();

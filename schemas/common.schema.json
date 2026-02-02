@@ -31,6 +31,18 @@
                 }
             ],
             "properties": {
+                "css": {
+                    "type": "string"
+                },
+                "display": {
+                    "type": "string"
+                },
+                "rowStyle": {
+                    "type": "string"
+                },
+                "rowClass": {
+                    "type": "string"
+                },
                 "value": {
                     "type": [
                         "string",

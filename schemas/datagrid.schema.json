@@ -65,6 +65,9 @@
                             "visible": {
                                 "type": "boolean"
                             },
+                            "css": {
+                                "type": "string"
+                            },
                             "labels": {
                                 "$ref": "common.schema.json#/definitions/multi_lang_label"
                             },

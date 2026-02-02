@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 
+	"strings"
+
 	"github.com/gnemet/datagrid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -93,8 +95,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Load templates
-	tmpl = template.Must(template.ParseGlob("ui/templates/partials/datagrid/*.html"))
+	// Load templates with helper functions
+	funcMap := datagrid.TemplateFuncs()
+	funcMap["T"] = func(s string) string { return s } // Dummy T function
+
+	tmpl = template.Must(template.New("main").Funcs(funcMap).ParseGlob("ui/templates/partials/datagrid/*.html"))
 	tmpl = template.Must(tmpl.ParseFiles("ui/templates/index.html"))
 
 	// Datagrid Setup (Using Catalog from Config)
@@ -107,19 +112,28 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("ui/static"))))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		hasJsonColumn := false
+		for _, col := range gridHandler.Columns {
+			if strings.Contains(strings.ToLower(col.Type), "json") {
+				hasJsonColumn = true
+				break
+			}
+		}
+
 		data := map[string]interface{}{
 			"App": map[string]string{
 				"Name":    cfg.Application.Name,
 				"Version": cfg.Application.Version,
 				"Author":  cfg.Application.Author,
 			},
-			"Title":        "Personnel Records", // Specific page title
-			"ListEndpoint": "/list",
-			"Limit":        10,
-			"Offset":       0,
-			"UIColumns":    gridHandler.Columns,
-			"LangsJSON":    `["en", "hu"]`,
-			"CurrentLang":  "en",
+			"Title":         "Personnel Records", // Specific page title
+			"ListEndpoint":  "/list",
+			"Limit":         10,
+			"Offset":        0,
+			"UIColumns":     gridHandler.Columns,
+			"LangsJSON":     `["en", "hu"]`,
+			"CurrentLang":   "en",
+			"HasJSONColumn": hasJsonColumn,
 		}
 		tmpl.ExecuteTemplate(w, "index.html", data)
 	})

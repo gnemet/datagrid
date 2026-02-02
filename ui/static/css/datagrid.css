@@ -58,6 +58,13 @@
     --dg-text-mute: var(--text-secondary);
     --dg-hover: #212529;
     --dg-selected: rgba(61, 139, 255, 0.1);
+
+    /* Theme Overrides */
+    --dg-toolbar-bg: var(--bg-secondary);
+    --dg-breadcrumb-bg: var(--bg-secondary);
+    --dg-input-bg: var(--bg-primary);
+    --dg-text-muted: #94a3b8;
+    --dg-input-border: #404b5c;
 }
 
 body {
@@ -250,11 +257,37 @@ body {
     padding: 8px 16px;
 }
 
+.right-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+#page-size-btn {
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    transition: background 0.2s;
+    font-weight: 600;
+}
+
+#page-size-btn:hover {
+    background: var(--dg-hover, #f1f3f5);
+}
+
+.pagination-controls button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
 .left-controls,
 .right-controls {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--dg-toolbar-gap, 12px);
+    width: 100%;
+    /* Ensure it spans if needed */
 }
 
 .search-wrapper {
@@ -262,11 +295,12 @@ body {
     display: flex;
     align-items: center;
     background: var(--dg-input-bg, #ffffff);
-    border: 1px solid var(--dg-border);
+    border: 1px solid var(--dg-input-border, var(--dg-border));
     border-radius: var(--radius-sm, 4px);
     padding: 0 10px;
     width: 280px;
-    height: 30px;
+    height: 32px;
+    /* Match button height */
     /* More compact for DataGrip feel */
     transition: all 0.2s;
 }
@@ -414,7 +448,7 @@ body {
 .datagrid-table td {
     padding: 0.875rem 1.25rem;
     border-bottom: 1px solid var(--dg-border);
-    color: var(--dg-text-main);
+    color: inherit;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -845,11 +879,36 @@ body {
     display: none !important;
 }
 
+.text-center {
+    text-align: center !important;
+}
+
+.text-right {
+    text-align: right !important;
+}
+
+.text-left {
+    text-align: left !important;
+}
+
+.align-center {
+    text-align: center !important;
+}
+
+.align-left {
+    text-align: left !important;
+}
+
+.align-right {
+    text-align: right !important;
+}
+
 /* Dynamic JSON Columns */
 .col-dyn-key {
-    background: var(--dg-accent-light) !important;
+    background: rgba(0, 97, 255, 0.05) !important;
     color: var(--dg-accent) !important;
     font-style: italic;
+    min-width: 120px;
 }
 
 .dg-dyn-label {
@@ -857,12 +916,16 @@ body {
     align-items: center;
     gap: 6px;
     font-size: 0.65rem;
-    opacity: 0.8;
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .dg-dyn-label::before {
     content: '{ }';
     font-weight: 800;
+    opacity: 0.7;
 }
 
 /* Responsive Overrides (CSS Waterfall) */

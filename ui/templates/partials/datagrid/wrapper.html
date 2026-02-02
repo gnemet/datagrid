@@ -41,9 +41,11 @@
             </div>
 
             <div class="right-controls column-chooser-wrapper">
+                {{if .HasJSONColumn}}
                 <button class="dg-btn-icon" id="expand-keys-btn" title="Expand JSON Keys">
                     <i class="fas fa-expand-alt"></i>
                 </button>
+                {{end}}
                 <button class="dg-btn-icon" id="toggle-sidebar-btn" title="Toggle Detail Panel">
                     <i class="fas fa-id-card"></i>
                 </button>
@@ -64,7 +66,8 @@
             </div>
         </div>
 
-        <form id="datagrid-filter-form" class="hidden">
+        <form id="datagrid-filter-form" class="hidden" hx-get="{{.ListEndpoint}}" hx-target="#datagrid-container"
+            hx-trigger="submit">
             <input type="hidden" name="limit" id="limit-input" value="{{.Limit}}">
             <input type="hidden" name="offset" id="offset-input" value="{{.Offset}}">
         </form>

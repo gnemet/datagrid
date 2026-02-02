@@ -22,8 +22,9 @@ CREATE TABLE IF NOT EXISTS personnel (
     email TEXT,
     department TEXT REFERENCES lov_departments(code),
     salary NUMERIC(15, 2),
-    status TEXT DEFAULT 'active',
+    status TEXT DEFAULT 'employed',
     is_valid BOOLEAN DEFAULT TRUE,
+    is_active BOOLEAN DEFAULT TRUE,
     data JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -32,8 +33,8 @@ INSERT INTO personnel (
         email,
         department,
         salary,
-        status,
         is_valid,
+        is_active,
         data
     )
 VALUES (
@@ -41,7 +42,7 @@ VALUES (
         'gabor.nemet@example.com',
         'ENG',
         120000,
-        'active',
+        true,
         true,
         '{"role": "Lead Architect", "experience": 15, "tags": ["go", "htmx", "postgres"]}'
     ),
@@ -50,7 +51,34 @@ VALUES (
         'istvan.kovacs@example.com',
         'MGT',
         95000,
-        'active',
+        true,
+        true,
+        '{"role": "PM", "experience": 8, "certifications": ["PMP"]}'
+    ),
+    (
+        'Nagy Béla',
+        'bela.nagy@example.com',
+        'MGT',
+        95000,
+        true,
+        true,
+        '{"role": "PM", "experience": 8, "certifications": ["PMP"]}'
+    ),
+    (
+        'Baklogh Balázs',
+        'balazs.baklogh@example.com',
+        'MGT',
+        95000,
+        true,
+        true,
+        '{"role": "PM", "experience": 8, "certifications": ["PMP"]}'
+    ),
+    (
+        'Rácz Johanna',
+        'johanna.racz@example.com',
+        'MGT',
+        95000,
+        false,
         true,
         '{"role": "PM", "experience": 8, "certifications": ["PMP"]}'
     ),
@@ -59,7 +87,7 @@ VALUES (
         'anna.szabo@example.com',
         'DSG',
         85000,
-        'active',
+        false,
         true,
         '{"role": "UI/UX", "tools": ["Figma", "Sketch"], "priority": 1}'
     ) ON CONFLICT (id) DO NOTHING;

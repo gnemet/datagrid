@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"strings"
@@ -20,18 +21,23 @@ type UIColumn struct {
 	Field    string    `json:"field"`
 	Label    string    `json:"label"`
 	Class    string    `json:"class"`
+	CSS      string    `json:"css"` // Custom CSS classes from Catalog
 	Type     string    `json:"type"`
 	Sortable bool      `json:"sortable"`
 	Visible  bool      `json:"visible"`
 	Record   bool      `json:"record"` // Include in detail sidebar
+	Display  string    `json:"display,omitempty"`
 	Icon     string    `json:"icon,omitempty"`
 	LOV      []LOVItem `json:"lov,omitempty"`
 }
 
 type LOVItem struct {
-	Value  interface{}       `json:"value"`
-	Labels map[string]string `json:"labels,omitempty"`
-	Label  string            `json:"label,omitempty"`
+	Value    interface{}       `json:"value"`
+	Display  string            `json:"display,omitempty"` // Custom display format/icon
+	Labels   map[string]string `json:"labels,omitempty"`
+	Label    string            `json:"label,omitempty"`
+	RowStyle string            `json:"rowStyle,omitempty"`
+	RowClass string            `json:"rowClass,omitempty"`
 }
 
 // Catalog structures for MIGR/JiraMntr compatibility
@@ -80,6 +86,8 @@ type FilterDef struct {
 
 type DatagridColumnDef struct {
 	Visible bool              `json:"visible"`
+	CSS     string            `json:"css,omitempty"`
+	Display string            `json:"display,omitempty"`
 	Labels  map[string]string `json:"labels"`
 	Icon    string            `json:"icon,omitempty"`
 	LOV     interface{}       `json:"lov,omitempty"`
@@ -241,6 +249,16 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 						li.Label = fmt.Sprintf("%v", m["label"])
 					}
 
+					if s, ok := m["display"].(string); ok {
+						li.Display = s
+					}
+					if s, ok := m["rowStyle"].(string); ok {
+						li.RowStyle = s
+					}
+					if s, ok := m["rowClass"].(string); ok {
+						li.RowClass = s
+					}
+
 					processed := processLovItem(li, lang)
 
 					// Only add if not duplicate
@@ -258,9 +276,18 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 			}
 		}
 
+		var cssClass string
+		var displayPattern string
+		if override, ok := cat.Datagrid.Columns[col.Name]; ok {
+			cssClass = override.CSS
+			displayPattern = override.Display
+		}
+
 		uiCols = append(uiCols, UIColumn{
 			Field:    col.Name,
 			Label:    label,
+			CSS:      cssClass,
+			Display:  displayPattern,
 			Sortable: true,
 			Visible:  visible,
 			Record:   true,
@@ -280,9 +307,12 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 
 func processLovItem(item LOVItem, lang string) LOVItem {
 	li := LOVItem{
-		Value:  item.Value,
-		Labels: item.Labels,
-		Label:  item.Label,
+		Value:    item.Value,
+		Display:  item.Display,
+		Labels:   item.Labels,
+		Label:    item.Label,
+		RowStyle: item.RowStyle,
+		RowClass: item.RowClass,
 	}
 	if item.Labels != nil {
 		if l, ok := item.Labels[lang]; ok {
@@ -354,8 +384,17 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 	where, args := h.buildWhere(p)
 	order := h.buildOrder(p.Sort)
 
+	// Handle explicit schema if table name contains dot
+	tableName := h.TableName
+	if strings.Contains(tableName, ".") {
+		parts := strings.Split(tableName, ".")
+		tableName = fmt.Sprintf("\"%s\".\"%s\"", parts[0], parts[1])
+	} else {
+		tableName = fmt.Sprintf("\"%s\"", tableName)
+	}
+
 	// Get total count
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s %s", h.TableName, where)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s %s", tableName, where)
 	var total int
 	if err := tx.QueryRow(countQuery, args...).Scan(&total); err != nil {
 		return nil, err
@@ -363,7 +402,7 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 
 	// Fetch records - Select all columns for Forensic DOM metadata
 	query := fmt.Sprintf("SELECT * FROM %s %s %s LIMIT %d OFFSET %d",
-		h.TableName, where, order, p.Limit, p.Offset)
+		tableName, where, order, p.Limit, p.Offset)
 
 	rows, err := tx.Query(query, args...)
 	if err != nil {
@@ -395,12 +434,46 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 				renderedVal = val
 			}
 			fullRow[col] = renderedVal
+			fullRow[col] = renderedVal
 			row[col] = renderedVal
+		}
+
+		if len(records) == 0 {
+			fmt.Println("DEBUG ROW 0:")
+			for k, v := range row {
+				fmt.Printf("  Key: %s, Type: %T, Value: %v\n", k, v, v)
+			}
 		}
 
 		// Forensic DOM: Attach full row metadata
 		if jsonBytes, err := json.Marshal(fullRow); err == nil {
 			row["_json"] = string(jsonBytes)
+		}
+
+		// Calculate Row Styling and Classes
+		var rowStyles []string
+		var rowClasses []string
+		for _, col := range h.Columns {
+			val := row[col.Field]
+			// Find matching LOV item
+			for _, item := range col.LOV {
+				// Simple loose comparison via string representation to handle float vs int cases (JSON uses float64)
+				if fmt.Sprintf("%v", item.Value) == fmt.Sprintf("%v", val) {
+					if item.RowStyle != "" {
+						rowStyles = append(rowStyles, item.RowStyle)
+					}
+					if item.RowClass != "" {
+						rowClasses = append(rowClasses, item.RowClass)
+					}
+					break
+				}
+			}
+		}
+		if len(rowStyles) > 0 {
+			row["_row_style"] = strings.Join(rowStyles, "; ")
+		}
+		if len(rowClasses) > 0 {
+			row["_row_class"] = strings.Join(rowClasses, " ")
 		}
 
 		records = append(records, row)
@@ -601,4 +674,24 @@ func (h *Handler) buildOrder(sorts []string) string {
 		return defaultSort
 	}
 	return "ORDER BY " + strings.Join(clauses, ", ")
+}
+
+// TemplateFuncs returns a map of standard datagrid template functions
+func TemplateFuncs() template.FuncMap {
+	return template.FuncMap{
+		"renderRow": RenderRow,
+		"replace":   strings.ReplaceAll,
+		"contains":  strings.Contains,
+	}
+}
+
+// RenderRow replaces %field% placeholders in a pattern with values from the row
+func RenderRow(pattern string, row map[string]interface{}) template.HTML {
+	result := pattern
+	for k, v := range row {
+		placeholder := fmt.Sprintf("%%%s%%", k)
+		valStr := fmt.Sprintf("%v", v)
+		result = strings.ReplaceAll(result, placeholder, valStr)
+	}
+	return template.HTML(result)
 }

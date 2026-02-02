@@ -2,7 +2,7 @@
     "version": "1.2",
     "objects": [
         {
-            "name": "personnel",
+            "name": "datagrid.personnel",
             "type": "table",
             "description": "Personnel records with multi-language LOV support.",
             "columns": [
@@ -13,6 +13,10 @@
                 },
                 {
                     "name": "is_valid",
+                    "type": "BOOL"
+                },
+                {
+                    "name": "is_active",
                     "type": "BOOL"
                 },
                 {
@@ -33,6 +37,10 @@
                 },
                 {
                     "name": "status",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "other_name",
                     "type": "TEXT"
                 },
                 {
@@ -69,7 +77,7 @@
             },
             "is_valid": {
                 "visible": true,
-                "icon": "fa-toggle-on",
+                "css": "text-center",
                 "labels": {
                     "en": "Valid?",
                     "hu": "Érvényes?"
@@ -77,6 +85,7 @@
                 "lov": [
                     {
                         "value": true,
+                        "display": "fas fa-toggle-on",
                         "labels": {
                             "en": "Valid",
                             "hu": "Érvényes"
@@ -84,9 +93,37 @@
                     },
                     {
                         "value": false,
+                        "display": "fas fa-toggle-off",
                         "labels": {
                             "en": "Invalid",
                             "hu": "Érvénytelen"
+                        }
+                    }
+                ]
+            },
+            "is_active": {
+                "visible": true,
+                "css": "text-center",
+                "labels": {
+                    "en": "Active?",
+                    "hu": "Aktív?"
+                },
+                "lov": [
+                    {
+                        "value": true,
+                        "display": "%is_active% fas fa-toggle-on",
+                        "css": "text-left",
+                        "labels": {
+                            "en": "Active",
+                            "hu": "Aktív"
+                        }
+                    },
+                    {
+                        "value": false,
+                        "display": "%is_active% fas fa-toggle-off",
+                        "labels": {
+                            "en": "Inactive",
+                            "hu": "Inaktív"
                         }
                     }
                 ]
@@ -128,8 +165,16 @@
                     "hu": "Állapot"
                 }
             },
-            "data": {
+            "other_name": {
                 "visible": true,
+                "display": "<span>%name% - %department%</span>",
+                "labels": {
+                    "en": "Other Name",
+                    "hu": "Egyéb Név"
+                }
+            },
+            "data": {
+                "visible": false,
                 "labels": {
                     "en": "JSON Info",
                     "hu": "JSON Infó"

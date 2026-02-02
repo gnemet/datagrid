@@ -16,16 +16,46 @@
     </thead>
     <tbody>
         {{range .Records}}
-        <tr data-id="{{.id}}" data-json="{{._json}}">
+        <tr data-id="{{.id}}" data-json="{{._json}}" {{if ._row_style}}style="{{._row_style}}" {{end}}{{if
+            ._row_class}}class="{{._row_class}}" {{end}}>
             {{$row := .}}
             {{range $.UIColumns}}
-            <td class="{{if .Class}}{{.Class}}{{else}}col-{{.Field}}{{end}}{{if not .Visible}} hidden-col{{end}}">
-                {{if eq .Type "status"}}
+            <td
+                class="{{if .Class}}{{.Class}}{{else}}col-{{.Field}}{{end}}{{if .CSS}} {{.CSS}}{{end}}{{if not .Visible}} hidden-col{{end}}">
+                {{if .Display}}
+                {{renderRow .Display $row}}
+                {{else if eq .Type "status"}}
                 <span class="badge badge-{{index $row .Field}}">{{index $row .Field}}</span>
                 {{else if eq .Type "json"}}
                 <code class="text-truncate-cell">{{index $row .Field}}</code>
                 {{else}}
-                {{index $row .Field}}
+                {{$val := index $row .Field}}
+                {{$lovItem := ""}}
+                {{if .LOV}}
+                {{range .LOV}}
+                {{if eq .Value $val}}
+                {{$lovItem = .}}
+                {{end}}
+                {{end}}
+                {{end}}
+
+                {{if $lovItem}}
+                {{if $lovItem.Display}}
+                {{/* If display looks like icon classes (contains fa-), render as icon */}}
+                {{if (contains $lovItem.Display "fa-")}}
+                <i class="{{replace $lovItem.Display (printf " %%%s%%" .Field) (printf "%v" $val)}}"></i>
+                {{else}}
+                {{/* Otherwise render as text/html with substitution */}}
+                {{replace $lovItem.Display (printf "%%%s%%" .Field) (printf "%v" $val)}}
+                {{end}}
+                {{else if $lovItem.Label}}
+                {{$lovItem.Label}}
+                {{else}}
+                {{$val}}
+                {{end}}
+                {{else}}
+                {{$val}}
+                {{end}}
                 {{end}}
             </td>
             {{end}}
@@ -39,6 +69,6 @@
 </table>
 
 <div id="pagination-metadata" class="hidden" data-total-count="{{.TotalCount}}" data-offset="{{.Offset}}"
-    data-limit="{{.Limit}}" hx-swap-oob="true">
+    data-limit="{{.Limit}}">
 </div>
 {{end}}
