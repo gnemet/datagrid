@@ -5,14 +5,15 @@ A high-performance, metadata-driven datagrid component library for Go and HTMX, 
 ## 🚀 Premium Features (v1.2.0)
 
 - **Metadata-Driven UI**: Configure columns, labels, icons, and behavior using localized JSON catalogs.
+- **Advanced Filtering & Search**:
+  - **Multi-Column Filtering**: Combine dropdown filters with global search for precision data mining (v1.2.0).
+  - **Advanced Search**: Configurable search columns, operators, and transactional similarity thresholds (`pg_trgm`).
+  - **Default Filters**: Define default filter states in the catalog for instant specialized views.
 - **Expert Minimalist Sorting**: 
   - 3-phase sorting (ASC -> DESC -> NONE) with rank indicators.
   - Multi-column support (Ctrl+Click).
   - **Advanced Postgres Sorting**: Full support for `NULLS FIRST` and `NULLS LAST` directives.
   - **Dynamic JSON Sorting**: Sort by nested JSON paths using the `dyn-` prefix (leveraging Postgres `->>` operator).
-- **Advanced Search & Thresholds**:
-  - Configurable search columns, operators, and similarity thresholds.
-  - **Transactional Thresholds**: Automatically sets `pg_trgm.similarity_threshold` within a transaction scope for high-precision fuzzy matching.
 - **Robust SQL Generation**:
   - Automatic double-quoting of identifiers to prevent collisions with reserved keywords.
   - Parentheses wrapping for complex searchable column expressions.
@@ -20,9 +21,13 @@ A high-performance, metadata-driven datagrid component library for Go and HTMX, 
   - Rows tagged with `data-json` containing the full record metadata.
   - Cells tagged with `.col-{field}` for easy CSS targeting and scraping.
   - Integrated `escapeClass` logic for deterministic selection of nested JSON fields.
-- **Record Detail Panel**: Integrated right-sidebar for high-density metadata inspection with a dedicated toggle button.
-- **JSON Key Expansion**: Dynamically expand nested JSON objects into table columns at runtime.
+- **High-Density UI & Styling**:
+  - **Record Detail Panel**: Integrated right-sidebar for high-density metadata inspection.
+  - **CSS-Based Zebra Striping**: Modern, theme-aware row shading using `nth-child` selectors (no inline styles).
+  - **JSON Key Expansion**: Dynamically expand nested JSON objects into table columns at runtime.
 - **Persistence Layer**: Automatic persistence of column visibility, width, order, and sorting in `localStorage`.
+- **Comprehensive Testing Tools**:
+  - Built-in data generator (`generate_data.py`) creating realistic, relational datasets for stress testing.
 
 ## 🛠 Architectural Identity
 
@@ -57,6 +62,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 ```
 
 ### Quick Run
+The build script automatically checks for `data.sql`. If missing, it uses `generate_data.py` to create a 100-row realistic dataset (v1.2.0).
 ```bash
 ./build_run.sh
 ```
