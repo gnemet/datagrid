@@ -1,6 +1,17 @@
 {{define "datagrid_wrapper"}}
 <div class="datagrid-wrapper">
     <div class="resource-toolbar">
+        <div class="dg-breadcrumb-bar">
+            <div class="dg-bc-item">
+                <i class="fas fa-database"></i>
+                <span>{{.App.Name}}</span>
+            </div>
+            <div class="dg-bc-separator"><i class="fas fa-chevron-right"></i></div>
+            <div class="dg-bc-item dg-bc-current">
+                <i class="fas {{.Icon}}"></i>
+                <span>{{.Title}}</span>
+            </div>
+        </div>
         <div class="datagrid-toolbar">
             <div class="left-controls">
                 <div class="search-wrapper">
