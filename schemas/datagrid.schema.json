@@ -54,6 +54,13 @@
                                 "desc nulls first",
                                 "desc nulls last"
                             ]
+                        },
+                        "rowStyles": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Cyclic row styles (e.g. alternating background colors)"
                         }
                     }
                 },

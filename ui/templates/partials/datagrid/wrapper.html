@@ -19,7 +19,7 @@
                     <input type="text" name="search" class="search-input" placeholder="Search..."
                         hx-get="{{.ListEndpoint}}" hx-target="#datagrid-container"
                         hx-trigger="keyup changed delay:300ms, search"
-                        hx-include=".search-input, #datagrid-filter-form">
+                        hx-include=".search-input, #datagrid-filter-form, .dg-select">
                 </div>
 
                 <div class="filter-group-container">
@@ -28,7 +28,7 @@
                     <div class="filter-group" data-field="{{.Field}}">
                         <span class="filter-label">{{.Label}}</span>
                         <select name="{{.Field}}" hx-get="{{$.ListEndpoint}}" hx-target="#datagrid-container"
-                            hx-include=".search-input, #datagrid-filter-form" class="dg-select">
+                            hx-include=".search-input, #datagrid-filter-form, .dg-select" class="dg-select">
                             <option value="">All</option>
                             {{range .LOV}}
                             <option value="{{.Value}}">{{.Label}}</option>
@@ -67,7 +67,7 @@
         </div>
 
         <form id="datagrid-filter-form" class="hidden" hx-get="{{.ListEndpoint}}" hx-target="#datagrid-container"
-            hx-trigger="submit">
+            hx-trigger="submit" hx-include=".search-input, .dg-select">
             <input type="hidden" name="limit" id="limit-input" value="{{.Limit}}">
             <input type="hidden" name="offset" id="offset-input" value="{{.Offset}}">
         </form>
@@ -75,7 +75,7 @@
 
     <div class="grid-main-layout">
         <div id="datagrid-container" class="dg-grid-container" hx-get="{{.ListEndpoint}}" hx-trigger="load"
-            hx-include=".search-input, #datagrid-filter-form">
+            hx-include=".search-input, #datagrid-filter-form, .dg-select">
             <div class="loading-state">
                 <i class="fas fa-spinner fa-spin"></i> Loading...
             </div>

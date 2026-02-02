@@ -89,7 +89,8 @@
                         "labels": {
                             "en": "Valid",
                             "hu": "Érvényes"
-                        }
+                        },
+                        "rowStyle": "color: green"
                     },
                     {
                         "value": false,
@@ -97,7 +98,8 @@
                         "labels": {
                             "en": "Invalid",
                             "hu": "Érvénytelen"
-                        }
+                        },
+                        "rowStyle": "color: red"
                     }
                 ]
             },

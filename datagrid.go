@@ -71,6 +71,7 @@ type DatagridDefaults struct {
 	SortDirection string                 `json:"sort_direction"`
 	Filters       map[string]interface{} `json:"filters"`
 	Search        string                 `json:"search"`
+	RowStyles     []string               `json:"rowStyles,omitempty"` // Cyclic row styles
 }
 
 type Operations struct {
@@ -172,6 +173,49 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 
 	obj := cat.Objects[0]
 	fmt.Printf("DEBUG DATAGRID: Object[0] Name: %s, Columns: %d\n", obj.Name, len(obj.Columns))
+
+	// Merge Defaults.Filters into Config.Filters (Fix for nested filters in catalog)
+	if cat.Datagrid.Filters == nil {
+		cat.Datagrid.Filters = make(map[string]FilterDef)
+	}
+
+	colTypes := make(map[string]string)
+	for _, col := range obj.Columns {
+		colTypes[col.Name] = strings.ToLower(col.Type)
+	}
+
+	for field, val := range cat.Datagrid.Defaults.Filters {
+		if _, exists := cat.Datagrid.Filters[field]; !exists {
+			// If value implies enabled (true or object), add definition
+			enabled := false
+			if b, ok := val.(bool); ok && b {
+				enabled = true
+			} else if _, ok := val.(map[string]interface{}); ok {
+				enabled = true
+			}
+
+			if enabled {
+				fd := FilterDef{Column: field}
+				// Infer type from column definition
+				if cType, ok := colTypes[field]; ok {
+					switch cType {
+					case "boolean", "bool":
+						fd.Type = "boolean"
+					case "int_bool":
+						fd.Type = "int_bool"
+					case "integer", "int", "numeric":
+						fd.Type = "number"
+					default:
+						fd.Type = "text"
+					}
+				} else {
+					fd.Type = "text"
+				}
+				cat.Datagrid.Filters[field] = fd
+			}
+		}
+	}
+
 	uiCols := []UIColumn{}
 
 	for _, col := range obj.Columns {
@@ -457,8 +501,11 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 			val := row[col.Field]
 			// Find matching LOV item
 			for _, item := range col.LOV {
-				// Simple loose comparison via string representation to handle float vs int cases (JSON uses float64)
-				if fmt.Sprintf("%v", item.Value) == fmt.Sprintf("%v", val) {
+				// Simple loose comparison via string representation
+				valStr := fmt.Sprintf("%v", val)
+				itemStr := fmt.Sprintf("%v", item.Value)
+				// fmt.Printf("Checking Col: %s, Val: %s, Item: %s, Style: %s\n", col.Field, valStr, itemStr, item.RowStyle) // DEBUG
+				if itemStr == valStr {
 					if item.RowStyle != "" {
 						rowStyles = append(rowStyles, item.RowStyle)
 					}
@@ -469,6 +516,13 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 				}
 			}
 		}
+
+		// Apply alternating row styles
+		if len(h.Config.Defaults.RowStyles) > 0 {
+			cycleIdx := len(records) % len(h.Config.Defaults.RowStyles)
+			rowStyles = append(rowStyles, h.Config.Defaults.RowStyles[cycleIdx])
+		}
+
 		if len(rowStyles) > 0 {
 			row["_row_style"] = strings.Join(rowStyles, "; ")
 		}
