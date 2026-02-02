@@ -184,6 +184,17 @@ body {
     height: 100%;
     width: 100%;
     overflow: hidden;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* Host Integrated Override: Explicitly sizing for Jiramntr layout */
+.host-integrated .datagrid-wrapper {
+    height: calc(100vh - 110px);
+    /* Space for app header (50px) + content padding/margins */
+    border: 1px solid var(--dg-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
 }
 
 .grid-main-layout {
