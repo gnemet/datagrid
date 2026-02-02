@@ -5,7 +5,9 @@ A high-performance, metadata-driven datagrid component library for Go and HTMX, 
 ## Features
 
 - **Metadata-Driven**: Configure columns, labels, and behavior using JSON catalogs.
-- **Expert Minimalist Sorting**: 3-phase sorting (ASC -> DESC -> NONE) with multi-column support (Ctrl+Click).
+- **Expert Minimalist Sorting**: 3-phase sorting (ASC -> DESC -> NONE) (Click) with multi-column support (Ctrl+Click).
+- **Column Hiding**: Hide columns by default, show them by clicking the "Columns" button or Shift+Click on the column header to hide.
+- **Column Reordering**: Drag and drop columns to reorder them.
 - **PostgreSQL Similarity Search**: Native fuzzy search support using `pg_trgm`.
 - **LOV Support**: Static and dynamic (SQL-based) List of Values for filters.
 - **Multi-Language**: Built-in support for multiple languages in labels and LOVs.
