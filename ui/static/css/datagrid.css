@@ -181,7 +181,8 @@ body {
     background: var(--dg-bg);
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100%;
+    width: 100%;
     overflow: hidden;
 }
 
@@ -208,6 +209,41 @@ body {
     display: flex;
     align-items: center;
     gap: 1rem;
+}
+
+.search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--dg-border);
+    border-radius: var(--radius-md);
+    padding: 0 12px;
+    width: 280px;
+    height: 36px;
+    transition: all 0.2s ease;
+}
+
+.search-wrapper i {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.search-wrapper .search-input {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 10px !important;
+    width: 100% !important;
+    height: 100% !important;
+    font-size: 0.9rem !important;
+    box-shadow: none !important;
+}
+
+.search-wrapper:focus-within {
+    border-color: var(--dg-accent);
+    background: var(--bg-primary);
+    box-shadow: 0 0 0 3px var(--dg-accent-light);
 }
 
 .filter-group-container {
@@ -269,7 +305,7 @@ body {
     border-color: var(--dg-accent-light);
 }
 
-.grid-content-area {
+.dg-grid-container {
     flex: 1;
     height: 100%;
     overflow: auto;
