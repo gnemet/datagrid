@@ -69,7 +69,7 @@ func TestBuildOrder(t *testing.T) {
 	// Test case: Multiple sorts
 	sorts := []string{"name:ASC", "id:DESC"}
 	order := h.buildOrder(sorts)
-	expected := "ORDER BY name ASC, id DESC"
+	expected := "ORDER BY \"name\" ASC, \"id\" DESC"
 	if order != expected {
 		t.Errorf("Expected '%s', got '%s'", expected, order)
 	}
@@ -77,7 +77,7 @@ func TestBuildOrder(t *testing.T) {
 	// Test case: Mixed formats
 	sorts2 := []string{"name", "age:DESC"}
 	order2 := h.buildOrder(sorts2)
-	expected2 := "ORDER BY name ASC, age DESC"
+	expected2 := "ORDER BY \"name\" ASC, \"age\" DESC"
 	if order2 != expected2 {
 		t.Errorf("Expected '%s', got '%s'", expected2, order2)
 	}
@@ -150,15 +150,4 @@ func TestIntegrationFetchData(t *testing.T) {
 	if _, ok := result.Records[0]["_json"]; !ok {
 		t.Errorf("Expected _json field in record for sidebar support")
 	}
-}
-
-func contains(s, substr string) bool {
-	return (len(s) >= len(substr)) && (fmt.Sprintf("%v", s) != "") && (len(substr) > 0) && (len(s) >= len(substr)) && (func() bool {
-		for i := 0; i <= len(s)-len(substr); i++ {
-			if s[i:i+len(substr)] == substr {
-				return true
-			}
-		}
-		return false
-	}())
 }
