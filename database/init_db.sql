@@ -3,7 +3,9 @@ CREATE SCHEMA IF NOT EXISTS datagrid;
 SET search_path TO datagrid;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 -- LOV Table for Departments
-CREATE TABLE IF NOT EXISTS lov_departments (
+DROP TABLE IF EXISTS personnel CASCADE;
+DROP TABLE IF EXISTS lov_departments CASCADE;
+CREATE TABLE lov_departments (
     code TEXT PRIMARY KEY,
     name_en TEXT,
     name_hu TEXT
@@ -62,7 +64,8 @@ VALUES (
         '{"role": "UI/UX"}'
     ) ON CONFLICT (id) DO NOTHING;
 -- Table 2: Responsibility
-CREATE TABLE IF NOT EXISTS responsibility (
+DROP TABLE IF EXISTS responsibility CASCADE;
+CREATE TABLE responsibility (
     id SERIAL PRIMARY KEY,
     uly_projekt_name TEXT,
     admin_projekt_name TEXT,

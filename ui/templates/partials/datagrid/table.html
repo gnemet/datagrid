@@ -6,7 +6,8 @@
             <th class="{{if .Class}}{{.Class}}{{else}}col-{{.Field}}{{end}}{{if not .Visible}} hidden-col{{end}}"
                 title="{{.Label}}" 
                 data-field="{{.Field}}"
-                data-sortable="{{.Sortable}}">
+                data-sortable="{{.Sortable}}"
+                draggable="true">
                 {{if eq .Field "id"}}<i class="fas fa-fingerprint"></i>
                 {{else if eq .Type "status"}}<i class="fas fa-heartbeat"></i>
                 {{else if eq .Type "state"}}<i class="fas fa-toggle-on"></i>

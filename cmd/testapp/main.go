@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gnemet/datagrid/internal/datagrid"
+	"github.com/gnemet/datagrid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"gopkg.in/yaml.v3"
@@ -116,7 +116,7 @@ func main() {
 	})
 
 	http.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
-		params := gridHandler.parseParams(r)
+		params := gridHandler.ParseParams(r)
 		result, err := gridHandler.FetchData(params)
 		if err != nil {
 			log.Printf("FetchData error: %v", err)

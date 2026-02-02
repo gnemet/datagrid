@@ -6,16 +6,16 @@ application:
   author: "Gabor Nemet"
 
 server:
-  port: "8080"
+  port: "8085"
 
 database:
   - name: "local"
-    host: "${DB_HOST:localhost}"
-    port: "${DB_PORT:5433}"
-    user: "${DB_USER:root}"
-    password: "${DB_PASSWORD:soa123}"
-    database: "${DB_NAME:db01}"
-    schema: "${DB_SCHEMA:datagrid}"
+    host: "${DB_HOST}"
+    port: "${DB_PORT}"
+    user: "${DB_USER}"
+    password: "${DB_PASSWORD}"
+    database: "${DB_NAME}"
+    schema: "${DB_SCHEMA}"
     default: true
 
 catalog:
