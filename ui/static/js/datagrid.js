@@ -22,7 +22,7 @@ function saveSettings() {
         columnOrder: []
     };
 
-    $('.meta-table th').each(function () {
+    $('.datagrid-table th').each(function () {
         const field = $(this).data('field');
         const colClass = getColClass($(this));
         if (field) {
@@ -64,7 +64,7 @@ function applySettingsToTable() {
     if (!raw) return;
     try {
         const s = JSON.parse(raw);
-        const $table = $('.meta-table');
+        const $table = $('.datagrid-table');
         const $thead = $table.find('thead tr');
 
         // 1. Reorder
@@ -96,16 +96,16 @@ function applySettingsToTable() {
 }
 
 function updateSortIcons() {
-    $('.meta-table th').each(function () {
+    $('.datagrid-table th').each(function () {
         const field = $(this).data('field');
         $(this).find('.sort-indicator').remove();
 
         const sortIdx = currentSort.findIndex(s => s.field === field);
         if (sortIdx !== -1) {
             const s = currentSort[sortIdx];
-            const icon = s.dir === 'ASC' ? '▲' : '▼';
+            const iconClass = s.dir === 'ASC' ? 'fa-sort-up' : 'fa-sort-down';
             let html = `<span class="sort-indicator">
-                            <span class="sort-arrow">${icon}</span>`;
+                            <i class="fas ${iconClass}"></i>`;
             if (currentSort.length > 1) {
                 html += `<span class="sort-rank-sub">${sortIdx + 1}</span>`;
             }
@@ -122,11 +122,11 @@ function initColumnChooser() {
     if (!$dropdown.length) return;
 
     $dropdown.empty();
-    $('.meta-table th').each(function () {
+    $('.datagrid-table th').each(function () {
         const field = $(this).data('field');
         if (!field) return;
 
-        const label = $(this).text().trim();
+        const label = $(this).data('label') || $(this).text().trim();
         const isVisible = !$(this).hasClass('hidden-col');
         const colClass = getColClass($(this));
 
@@ -167,7 +167,7 @@ function initEvents() {
 
     // 1.5 Sidebar Toggle
     $(document).on('click', '#toggle-sidebar-btn', function (e) {
-        $('#record-detail-sidebar').toggleClass('collapsed');
+        $('#datagrid-detail-sidebar').toggleClass('collapsed');
     });
 
     $('#column-chooser-dropdown').on('click', function (e) {
@@ -175,7 +175,7 @@ function initEvents() {
     });
 
     // 2. Sorting & Hiding
-    $(document).on('click', '.meta-table th.sortable', function (e) {
+    $(document).on('click', '.datagrid-table th.sortable', function (e) {
         if ($(e.target).hasClass('resizer')) return;
 
         // Shift+Click: Hide Column
@@ -213,7 +213,7 @@ function initEvents() {
 
         saveSettings();
         updateSortIcons();
-        htmx.trigger('#meta-list-container', 'load');
+        htmx.trigger('#datagrid-filter-form', 'submit');
     });
 
     // 3. Resizing
@@ -231,21 +231,21 @@ function initEvents() {
     });
 
     // 4. Dragging
-    $(document).on('dragstart', '.meta-table th', function (e) {
+    $(document).on('dragstart', '.datagrid-table th', function (e) {
         draggingCol = this;
         $(this).addClass('dragging');
     });
 
-    $(document).on('dragover', '.meta-table th', function (e) {
+    $(document).on('dragover', '.datagrid-table th', function (e) {
         e.preventDefault();
         $(this).addClass('drag-over');
     });
 
-    $(document).on('dragleave', '.meta-table th', function () {
+    $(document).on('dragleave', '.datagrid-table th', function () {
         $(this).removeClass('drag-over');
     });
 
-    $(document).on('drop', '.meta-table th', function (e) {
+    $(document).on('drop', '.datagrid-table th', function (e) {
         e.preventDefault();
         $(this).removeClass('drag-over');
         if (draggingCol && draggingCol !== this) {
@@ -258,7 +258,7 @@ function initEvents() {
             const srcCls = escapeClass(getColClass($(draggingCol)));
             const targetCls = escapeClass(getColClass($(this)));
 
-            $('.meta-table tbody tr').each(function () {
+            $('.datagrid-table tbody tr').each(function () {
                 const $srcTd = $(this).find('.' + srcCls);
                 const $targetTd = $(this).find('.' + targetCls);
                 if (srcIdx < targetIdx) $targetTd.after($srcTd);
@@ -268,14 +268,14 @@ function initEvents() {
         }
     });
 
-    $(document).on('dragend', '.meta-table th', function () {
+    $(document).on('dragend', '.datagrid-table th', function () {
         $(this).removeClass('dragging');
-        $('.meta-table th').removeClass('drag-over');
+        $('.datagrid-table th').removeClass('drag-over');
         draggingCol = null;
     });
 
     // 5. Row Selection & Detail View
-    $(document).on('click', '.meta-table tbody tr', function (e) {
+    $(document).on('click', '.datagrid-table tbody tr', function (e) {
         if ($(e.target).closest('button, a, input, [data-action]').length) return;
 
         $('.meta-table tbody tr').removeClass('selected');
@@ -294,8 +294,8 @@ function initEvents() {
                 $('#right-sidebar').removeClass('active');
                 break;
             case 'toggle-sidebar':
-                $('#record-detail-sidebar').toggleClass('collapsed');
-                const isRCollapsed = $('#record-detail-sidebar').hasClass('collapsed');
+                $('#datagrid-detail-sidebar').toggleClass('collapsed');
+                const isRCollapsed = $('#datagrid-detail-sidebar').hasClass('collapsed');
                 // Update icon if present
                 const $rIcon = $(this).find('i.fa-angle-left, i.fa-angle-right');
                 if ($rIcon.length) {
@@ -335,7 +335,7 @@ function initEvents() {
 }
 
 function expandJSONKeys() {
-    const table = $('.meta-table');
+    const table = $('.datagrid-table');
     const rows = table.find('tbody tr');
     const keys = new Set();
 
@@ -418,7 +418,7 @@ document.body.addEventListener('htmx:configRequest', function (evt) {
 });
 
 document.body.addEventListener('htmx:afterSwap', function (evt) {
-    if (evt.target.id === 'meta-list-container' || evt.target.classList.contains('meta-table')) {
+    if (evt.target.id === 'datagrid-container' || evt.target.classList.contains('datagrid-table')) {
         applySettingsToTable();
         updateSortIcons();
         initColumnChooser();
@@ -426,7 +426,7 @@ document.body.addEventListener('htmx:afterSwap', function (evt) {
 });
 
 function updateLeftSidebar(data) {
-    const container = $('#sidebar-detail-content');
+    const container = $('#datagrid-detail-content');
     container.empty();
 
     let record = data;
@@ -470,7 +470,7 @@ $(document).ready(function () {
     loadSettings();
     initEvents();
     // Initial apply if table already present
-    if ($('.meta-table').length) {
+    if ($('.datagrid-table').length) {
         applySettingsToTable();
         updateSortIcons();
         initColumnChooser();

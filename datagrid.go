@@ -2,12 +2,18 @@ package datagrid
 
 import (
 	"database/sql"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 )
+
+// UIAssets embeds the standardized CSS, JS and Templates
+//
+//go:embed ui/*
+var UIAssets embed.FS
 
 // UIColumn defines how a column is rendered in the grid
 type UIColumn struct {

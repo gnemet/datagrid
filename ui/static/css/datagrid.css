@@ -293,7 +293,7 @@ body {
     position: relative;
 }
 
-.meta-table {
+.datagrid-table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
@@ -301,7 +301,7 @@ body {
     table-layout: fixed;
 }
 
-.meta-table th {
+.datagrid-table th {
     position: sticky;
     top: 0;
     z-index: 20;
@@ -318,12 +318,12 @@ body {
     transition: all 0.2s ease;
 }
 
-.meta-table th.sortable:hover {
+.datagrid-table th.sortable:hover {
     color: var(--dg-accent);
     background: var(--dg-accent-light);
 }
 
-.meta-table td {
+.datagrid-table td {
     padding: 0.875rem 1.25rem;
     border-bottom: 1px solid var(--dg-border);
     color: var(--dg-text-main);
@@ -333,29 +333,29 @@ body {
     transition: all 0.15s ease;
 }
 
-.meta-table tr:last-child td {
+.datagrid-table tr:last-child td {
     border-bottom: none;
 }
 
 /* Numeric alignment and monospacing */
-.meta-table td[data-field="id"],
-.meta-table td[data-field="salary"],
-.meta-table td[data-field="earnings"],
+.datagrid-table td[data-field="id"],
+.datagrid-table td[data-field="salary"],
+.datagrid-table td[data-field="earnings"],
 .col-number {
     font-family: var(--dg-font-mono);
     font-variant-numeric: tabular-nums;
     text-align: right;
 }
 
-.meta-table tr:hover td {
+.datagrid-table tr:hover td {
     background: var(--dg-hover);
 }
 
-.meta-table tr.selected td {
+.datagrid-table tr.selected td {
     background: var(--dg-selected);
 }
 
-.meta-table tbody tr.selected {
+.datagrid-table tbody tr.selected {
     background: var(--dg-accent-light);
     box-shadow: inset 4px 0 0 var(--dg-accent);
 }
@@ -415,12 +415,12 @@ body {
 }
 
 /* Dragging */
-.meta-table th.dragging {
+.datagrid-table th.dragging {
     opacity: 0.5;
     background: var(--dg-accent-light) !important;
 }
 
-.meta-table th.drag-over {
+.datagrid-table th.drag-over {
     border-left: 2px solid var(--dg-accent) !important;
 }
 

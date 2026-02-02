@@ -1,10 +1,11 @@
 {{define "datagrid_table"}}
-<table class="meta-table">
+<table class="datagrid-table">
     <thead>
         <tr>
             {{range .UIColumns}}
             <th class="{{if .Class}}{{.Class}}{{else}}col-{{.Field}}{{end}}{{if not .Visible}} hidden-col{{end}}{{if .Sortable}} sortable{{end}}"
-                title="{{.Label}}" data-field="{{.Field}}" data-sortable="{{.Sortable}}" draggable="true">
+                title="{{.Label}}" data-field="{{.Field}}" data-label="{{.Label}}" data-sortable="{{.Sortable}}"
+                draggable="true">
                 {{if .Icon}}<i class="fas {{.Icon}}"></i>
                 {{else}}{{.Label}}
                 {{end}}
