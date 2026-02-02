@@ -189,12 +189,19 @@ body {
 }
 
 /* Host Integrated Override: Explicitly sizing for Jiramntr layout */
+.host-integrated {
+    padding: 10px 0;
+    height: 100%;
+    display: flex;
+}
+
 .host-integrated .datagrid-wrapper {
-    height: calc(100vh - 110px);
-    /* Space for app header (50px) + content padding/margins */
+    height: calc(100vh - 140px);
+    /* Leave room for header (50px) + padding (20px*2) + breadcrumbs (30px) + safety */
     border: 1px solid var(--dg-border);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    background: var(--dg-bg);
 }
 
 .grid-main-layout {
@@ -226,18 +233,24 @@ body {
     position: relative;
     display: flex;
     align-items: center;
-    background: var(--bg-secondary);
+    background: rgba(0, 0, 0, 0.03);
     border: 1px solid var(--dg-border);
-    border-radius: var(--radius-md);
-    padding: 0 12px;
-    width: 280px;
-    height: 36px;
-    transition: all 0.2s ease;
+    border-radius: 20px;
+    /* Pill shape for premium feel */
+    padding: 0 15px;
+    width: 320px;
+    height: 38px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="dark"] .search-wrapper {
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .search-wrapper i {
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    opacity: 0.6;
+    font-size: 0.9rem;
     pointer-events: none;
 }
 
