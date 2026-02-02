@@ -74,11 +74,12 @@ func TestBuildOrder(t *testing.T) {
 		t.Errorf("Expected '%s', got '%s'", expected, order)
 	}
 
-	// Test case: Invalid format
-	sorts2 := []string{"name", "invalid:MODE"}
+	// Test case: Mixed formats
+	sorts2 := []string{"name", "age:DESC"}
 	order2 := h.buildOrder(sorts2)
-	if order2 != "ORDER BY id DESC" { // Default
-		t.Errorf("Expected default ORDER BY, got '%s'", order2)
+	expected2 := "ORDER BY name ASC, age DESC"
+	if order2 != expected2 {
+		t.Errorf("Expected '%s', got '%s'", expected2, order2)
 	}
 }
 

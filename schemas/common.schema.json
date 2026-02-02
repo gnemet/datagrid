@@ -1,0 +1,62 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/gnemet/datagrid/main/schemas/common.schema.json",
+    "title": "Common Datagrid Definitions",
+    "definitions": {
+        "multi_lang_label": {
+            "type": "object",
+            "patternProperties": {
+                "^[a-z]{2}$": {
+                    "type": "string"
+                }
+            },
+            "minProperties": 1,
+            "additionalProperties": false
+        },
+        "lov_item": {
+            "type": "object",
+            "required": [
+                "value"
+            ],
+            "anyOf": [
+                {
+                    "required": [
+                        "label"
+                    ]
+                },
+                {
+                    "required": [
+                        "labels"
+                    ]
+                }
+            ],
+            "properties": {
+                "value": {
+                    "type": [
+                        "string",
+                        "number",
+                        "integer",
+                        "boolean"
+                    ]
+                },
+                "label": {
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "$ref": "#/definitions/multi_lang_label"
+                        }
+                    ]
+                },
+                "labels": {
+                    "$ref": "#/definitions/multi_lang_label"
+                }
+            }
+        },
+        "version": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+$"
+        }
+    }
+}

@@ -16,7 +16,9 @@ import (
 
 type Config struct {
 	Application struct {
-		Name string `yaml:"name"`
+		Name    string `yaml:"name"`
+		Version string `yaml:"version"`
+		Author  string `yaml:"author"`
 	} `yaml:"application"`
 	Server struct {
 		Port string `yaml:"port"`
@@ -83,7 +85,7 @@ func main() {
 		}
 	}
 
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable search_path=%s",
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable search_path=%s,public",
 		dbCfg.Host, dbCfg.Port, dbCfg.User, dbCfg.Password, dbCfg.Database, dbCfg.Schema)
 
 	db, err = sql.Open("postgres", connStr)
@@ -106,11 +108,18 @@ func main() {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		data := map[string]interface{}{
-			"Title":        cfg.Application.Name,
+			"App": map[string]string{
+				"Name":    cfg.Application.Name,
+				"Version": cfg.Application.Version,
+				"Author":  cfg.Application.Author,
+			},
+			"Title":        "Personnel Records", // Specific page title
 			"ListEndpoint": "/list",
 			"Limit":        10,
 			"Offset":       0,
-			"UIColumns":    gridHandler.Columns, // Pass columns for LOV filters
+			"UIColumns":    gridHandler.Columns,
+			"LangsJSON":    `["en", "hu"]`,
+			"CurrentLang":  "en",
 		}
 		tmpl.ExecuteTemplate(w, "index.html", data)
 	})

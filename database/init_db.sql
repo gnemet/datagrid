@@ -43,7 +43,7 @@ VALUES (
         120000,
         'active',
         true,
-        '{"role": "Lead Architect"}'
+        '{"role": "Lead Architect", "experience": 15, "tags": ["go", "htmx", "postgres"]}'
     ),
     (
         'Kovács István',
@@ -52,7 +52,7 @@ VALUES (
         95000,
         'active',
         true,
-        '{"role": "PM"}'
+        '{"role": "PM", "experience": 8, "certifications": ["PMP"]}'
     ),
     (
         'Szabó Anna',
@@ -61,7 +61,7 @@ VALUES (
         85000,
         'active',
         true,
-        '{"role": "UI/UX"}'
+        '{"role": "UI/UX", "tools": ["Figma", "Sketch"], "priority": 1}'
     ) ON CONFLICT (id) DO NOTHING;
 -- Table 2: Responsibility
 DROP TABLE IF EXISTS responsibility CASCADE;

@@ -1,88 +1,74 @@
-# DATAGRID UI/UX Technical Guide
+# DATAGRID v1.2.0 Technical Guide
 
-The `DATAGRID` is a metadata-driven presentation layer designed for high-density, expert BI (Business Intelligence) applications. It translates JSON catalogs into interactive, persistence-enabled PostgreSQL tables.
-
----
-
-## 🏗️ Core Concept
-Instead of hardcoding table structures, the system derives columns, filters, and behavior from a centralized **Catalog**.
-- **Backend**: Go library parses the catalog and generates optimized SQL (Multi-sort, Search, Pagination).
-- **Frontend**: Lightweight JS (`datagrid.js`) handles interactions and local persistence.
-- **Communication**: Seamless integration with **HTMX** for zero-refresh updates.
+The `DATAGRID` is a metadata-driven presentation layer designed for high-density, expert BI applications. It translates JSON catalogs into interactive, persistence-enabled PostgreSQL tables.
 
 ---
 
-## 📂 Catalog JSON Format
-The catalog defines the "DNA" of a resource.
+## 🏗️ Core Architecture
+The system follows a strict split between the **Semantic Model** and the **UI View**.
+- **Backend (Go)**: A modular library that parses JSON catalogs, validates against schemas, generates optimized SQL, and handles identifier quoting for safety.
+- **Frontend (JS)**: `datagrid.js` provides a lightweight, reactive layer for Forensic DOM interactions, local persistence, and safe CSS selector escaping for nested keys.
+- **Styling (CSS)**: A standalone, **No-Tailwind** design system using semantic `dg-*` classes, Inter typography, and right-aligned integrated panels.
 
-### Example: `personnel.json`
+---
+
+## 📂 Catalog Configuration
+
+### Searchable Configuration
+The `searchable` object allows fine-grained control over the similarity search engine.
 ```json
-{
-  "version": "1.0",
-  "title": "Personnel Registry",
-  "icon": "fa-users",
-  "datagrid": {
-    "defaults": { "page_size": 20, "sort_column": "name", "sort_direction": "asc" },
-    "filters": {
-      "status": { "column": "status", "type": "text" }
-    },
-    "columns": {
-      "id": { "visible": false },
-      "email": { "labels": { "en": "Email Address", "hu": "E-mail cím" } }
-    },
-    "lovs": {
-      "status": [
-        { "value": "active", "label": { "en": "Active", "hu": "Aktív" } },
-        { "value": "retired", "label": { "en": "Retired", "hu": "Nyugdíjas" } }
-      ]
-    }
-  },
-  "objects": [
-    {
-      "name": "personnel",
-      "columns": [
-        { "name": "id", "type": "bigint", "primary_key": true },
-        { "name": "name", "type": "text", "labels": { "en": "Name", "hu": "Név" } }
-      ]
-    }
-  ]
+"searchable": {
+    "columns": ["name", "email", "(data->>'role')"],
+    "operator": "%",
+    "threshold": 0.5
 }
 ```
+- **Operator**: Supports standard PostgreSQL operators (`%`, `~`, `ILIKE`, etc.).
+- **Threshold**: When using `%` (similarity), the backend automatically wraps queries in a transaction to set `SET LOCAL pg_trgm.similarity_threshold` for the session.
+- **Dependency**: The PostgreSQL connection must have `public` in its `search_path` to resolve `pg_trgm` operators correctly.
+
+### 🎨 Visual & Data Overrides (`datagrid.columns`)
+UI-specific metadata is decoupled from the database schema:
+- **`icon`**: Font-Awesome class (e.g., `fa-id-card`) rendered in table headers.
+- **`lov`**: Overrides schema-level LOVs with static lists or dynamic SQL specific to the current view.
+- **`labels`**: Multi-language support (`en`, `hu`, etc.).
 
 ---
 
-## 🖱️ Expert Interactions
+## 🖱️ Expert Interaction Model
 
-### 1. 3-Phase Loop Sorting
-Clicking a column header cycles through three states:
-1.  **ASC (▲)**: Ascending order.
-2.  **DESC (▼)**: Descending order.
-3.  **NONE**: Removes column from sort.
+### 1. Robust SQL Generation
+- **Identifier Quoting**: The backend automatically double-quotes column and table names (`"field"`) to prevent collisions with SQL reserved words.
+- **Precedence Safety**: Searchable column expressions are automatically wrapped in parentheses to ensure correct evaluation order with JSONB operators.
 
-### 2. Multi-Column Sorting
-- **Action**: `Ctrl + Click` on headers.
-- **Visual**: Sort sequence is indicated by subscript ranks (e.g., `▲₁`, `▼₂`).
-- **Persistence**: Remembers the exact multi-sort state across sessions.
+### 2. Layout & Sidebars
+- **Integrated Right Panel**: The record detail sidebar is positioned on the right to optimize data density and scanability.
+- **Toggle Control**: A functional toggle button (`#toggle-sidebar-btn`) collapses the panel, allowing the main grid to fill the viewport dynamically.
 
-### 3. Expert Shortcuts
-- **Shift + Click**: Instantly hides a column. No need to open the column chooser.
-- **Column Chooser**: The ⚙️ icon in the toolbar allows toggling visibility for all defined columns.
+### 3. Forensic DOM Standard
+- **`data-json`**: Full row metadata embedded on `<tr>`.
+- **`.col-{field}`**: Standardized classes on `<td>` for precise selection.
+- **`escapeClass()`**: A JS utility that escapes dots in nested fields (e.g., `data.role` -> `data\.role`) to ensure deterministic CSS selection.
 
----
-
-## 🧩 Forensic DOM Standard
-To enable robust testing and AI interactions, the Datagrid follows strict DOM tagging:
-- **`col-{field}`**: Every cell (`<td>`) is tagged with its field name.
-- **`data-json`**: Row metadata is embedded as a JSON string for easy extraction.
-- **`data-sort`**: Headers contain the current sort state.
+### 4. JSON Key Expansion
+The "Expand JSON Keys" feature recursively flattens `data-json` attributes and injects dynamic columns, supporting sorting via the `dyn-` routing system.
 
 ---
 
-## 💾 Persistence & State
-All UI state is tracked in `localStorage` under keys derived from the resource code:
-- `dg-{code}-vis`: Column visibility bitmask.
-- `dg-{code}-order`: Column display order.
-- `dg-{code}-sort`: Serialized sort array.
+## 💾 State Persistence
+UI state is persisted in `localStorage` using resource-scoped keys:
+- **Sort**: Current multi-sort array.
+- **Visibility**: Map of hidden/visible columns.
+- **Widths**: User-resized column widths.
+- **Order**: Custom column sequence from drag-and-drop actions.
+
+---
+
+## 🎨 Design System (No-Tailwind)
+The datagrid enforces high-density aesthetics without external CSS frameworks:
+- **Typography**: Inter (UI-Standard) or monospace for JSON data.
+- **Radius**: `dg-radius` (8px) for cards and inputs.
+- **Shadows**: `dg-shadow-sm` for toolbars, `dg-shadow-md` for sidebars.
 
 ---
 *Generated by Antigravity Engine | DATAGRID v1.2.0 Standard*

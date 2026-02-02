@@ -9,99 +9,87 @@
                 {
                     "name": "id",
                     "type": "BIGINT",
-                    "primary_key": true,
-                    "labels": {
-                        "en": "ID",
-                        "hu": "Azonosító"
-                    }
+                    "primary_key": true
                 },
                 {
                     "name": "is_valid",
-                    "type": "BOOL",
-                    "labels": {
-                        "en": "Valid",
-                        "hu": "Érvényes"
-                    },
-                    "lov": [
-                        {
-                            "value": "true",
-                            "label": {
-                                "en": "YES",
-                                "hu": "IGEN"
-                            }
-                        },
-                        {
-                            "value": "false",
-                            "label": {
-                                "en": "NO",
-                                "hu": "NEM"
-                            }
-                        }
-                    ]
+                    "type": "BOOL"
                 },
                 {
                     "name": "name",
-                    "type": "TEXT",
-                    "labels": {
-                        "en": "Name",
-                        "hu": "Név"
-                    }
+                    "type": "TEXT"
                 },
                 {
                     "name": "email",
-                    "type": "TEXT",
-                    "labels": {
-                        "en": "Email",
-                        "hu": "Email"
-                    }
+                    "type": "TEXT"
                 },
                 {
                     "name": "department",
-                    "type": "TEXT",
-                    "labels": {
-                        "en": "Department",
-                        "hu": "Részleg"
-                    },
-                    "lov": "SELECT code AS value, name_{lang} AS label FROM lov_departments ORDER BY 2"
+                    "type": "TEXT"
                 },
                 {
                     "name": "salary",
-                    "type": "NUMERIC",
-                    "labels": {
-                        "en": "Salary",
-                        "hu": "Fizetés"
-                    }
+                    "type": "NUMERIC"
                 },
                 {
                     "name": "status",
-                    "type": "TEXT",
-                    "labels": {
-                        "en": "Status",
-                        "hu": "Állapot"
-                    }
+                    "type": "TEXT"
                 },
                 {
                     "name": "data",
-                    "type": "JSONB",
-                    "labels": {
-                        "en": "Metadata",
-                        "hu": "Metaadat"
-                    }
+                    "type": "JSONB"
                 }
             ]
         }
     ],
     "datagrid": {
+        "defaults": {
+            "page_size": [
+                10,
+                25,
+                50,
+                100
+            ],
+            "sort_column": "id",
+            "sort_direction": "asc",
+            "filters": {
+                "is_valid": true
+            },
+            "search": ""
+        },
+        "operations": {
+            "add": true,
+            "edit": true,
+            "delete": false
+        },
         "columns": {
             "id": {
                 "visible": true,
-                "labels": {
-                    "en": "ID",
-                    "hu": "AZ"
-                }
+                "icon": "fa-fingerprint"
             },
             "is_valid": {
-                "visible": true
+                "visible": true,
+                "icon": "fa-toggle-on",
+                "labels": {
+                    "en": "Valid?",
+                    "hu": "Érvényes?"
+                },
+                "lov": [
+                    {
+                        "value": true,
+                        "labels": {
+                            "en": "Valid",
+                            "hu": "Érvényes"
+                        }
+                    },
+                    {
+                        "value": false,
+                        "labels": {
+                            "en": "Invalid",
+                            "hu": "Érvénytelen"
+                        }
+                    }
+                ]
             },
             "name": {
                 "visible": true,
@@ -111,10 +99,19 @@
                 }
             },
             "email": {
-                "visible": true
+                "visible": true,
+                "labels": {
+                    "en": "Email",
+                    "hu": "Email"
+                }
             },
             "department": {
-                "visible": true
+                "visible": true,
+                "labels": {
+                    "en": "Department",
+                    "hu": "Részleg"
+                },
+                "lov": "SELECT code AS value, name_{lang} AS label FROM lov_departments ORDER BY 2"
             },
             "salary": {
                 "visible": true,
@@ -124,7 +121,12 @@
                 }
             },
             "status": {
-                "visible": true
+                "visible": true,
+                "icon": "fa-heartbeat",
+                "labels": {
+                    "en": "Status",
+                    "hu": "Állapot"
+                }
             },
             "data": {
                 "visible": true,
@@ -133,6 +135,31 @@
                     "hu": "JSON Infó"
                 }
             }
+        },
+        "filters": {
+            "department": {
+                "column": "department",
+                "type": "text"
+            },
+            "is_valid": {
+                "column": "is_valid",
+                "type": "boolean"
+            },
+            "status": {
+                "column": "status",
+                "type": "text"
+            }
+        },
+        "searchable": {
+            "columns": [
+                "name",
+                "email",
+                "department",
+                "status",
+                "data->>'role'"
+            ],
+            "operator": "%",
+            "threshold": 0.3
         }
     }
 }

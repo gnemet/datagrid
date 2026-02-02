@@ -3,15 +3,9 @@
     <thead>
         <tr>
             {{range .UIColumns}}
-            <th class="{{if .Class}}{{.Class}}{{else}}col-{{.Field}}{{end}}{{if not .Visible}} hidden-col{{end}}"
-                title="{{.Label}}" 
-                data-field="{{.Field}}"
-                data-sortable="{{.Sortable}}"
-                draggable="true">
-                {{if eq .Field "id"}}<i class="fas fa-fingerprint"></i>
-                {{else if eq .Type "status"}}<i class="fas fa-heartbeat"></i>
-                {{else if eq .Type "state"}}<i class="fas fa-toggle-on"></i>
-                {{else if eq .Type "latest"}}<i class="fas fa-clock"></i>
+            <th class="{{if .Class}}{{.Class}}{{else}}col-{{.Field}}{{end}}{{if not .Visible}} hidden-col{{end}}{{if .Sortable}} sortable{{end}}"
+                title="{{.Label}}" data-field="{{.Field}}" data-sortable="{{.Sortable}}" draggable="true">
+                {{if .Icon}}<i class="fas {{.Icon}}"></i>
                 {{else}}{{.Label}}
                 {{end}}
                 <div class="resizer"></div>
@@ -43,10 +37,7 @@
     </tbody>
 </table>
 
-<div id="pagination-metadata" class="hidden" 
-     data-total-count="{{.TotalCount}}" 
-     data-offset="{{.Offset}}"
-     data-limit="{{.Limit}}" 
-     hx-swap-oob="true">
+<div id="pagination-metadata" class="hidden" data-total-count="{{.TotalCount}}" data-offset="{{.Offset}}"
+    data-limit="{{.Limit}}" hx-swap-oob="true">
 </div>
 {{end}}

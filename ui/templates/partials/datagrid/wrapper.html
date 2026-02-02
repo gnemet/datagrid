@@ -1,73 +1,86 @@
 {{define "datagrid_wrapper"}}
-<div class="datagrid-container">
-    <div class="meta-header">
-        <div class="search-wrapper">
-            <i class="fas fa-search"></i>
-            <input type="text" name="search" class="search-input" placeholder="Search..." hx-get="{{.ListEndpoint}}"
-                hx-target="#meta-list-container" hx-trigger="keyup changed delay:300ms, search"
-                hx-include="#filter-form">
-        </div>
+<div class="datagrid-wrapper">
+    <div class="resource-toolbar">
+        <div class="datagrid-toolbar">
+            <div class="left-controls">
+                <div class="search-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" name="search" class="search-input" placeholder="Search..."
+                        hx-get="{{.ListEndpoint}}" hx-target="#meta-list-container"
+                        hx-trigger="keyup changed delay:300ms, search" hx-include=".search-input, #filter-form">
+                </div>
 
-        <div class="filter-bar">
-            {{range .UIColumns}}
-            {{if .LOV}}
-            <div class="lov-selector" data-field="{{.Field}}">
-                <select name="{{.Field}}" hx-get="{{$.ListEndpoint}}" hx-target="#meta-list-container"
-                    hx-include="#filter-form" class="form-select">
-                    <option value="">{{.Label}}: All</option>
-                    {{range .LOV}}
-                    <option value="{{.Value}}">{{.Label}}</option>
+                <div class="filter-group-container">
+                    {{range .UIColumns}}
+                    {{if .LOV}}
+                    <div class="filter-group" data-field="{{.Field}}">
+                        <span class="filter-label">{{.Label}}</span>
+                        <select name="{{.Field}}" hx-get="{{$.ListEndpoint}}" hx-target="#meta-list-container"
+                            hx-include=".search-input, #filter-form" class="dg-select">
+                            <option value="">All</option>
+                            {{range .LOV}}
+                            <option value="{{.Value}}">{{.Label}}</option>
+                            {{end}}
+                        </select>
+                    </div>
                     {{end}}
-                </select>
+                    {{end}}
+                </div>
             </div>
-            {{end}}
-            {{end}}
+
+            <div class="right-controls column-chooser-wrapper">
+                <button class="dg-btn-icon" id="expand-keys-btn" title="Expand JSON Keys">
+                    <i class="fas fa-expand-alt"></i>
+                </button>
+                <button class="dg-btn-icon" id="toggle-sidebar-btn" title="Toggle Detail Panel">
+                    <i class="fas fa-id-card"></i>
+                </button>
+                <button class="dg-btn-icon" id="column-chooser-btn" title="Choose Columns">
+                    <i class="fas fa-columns"></i>
+                </button>
+                <div id="column-chooser-dropdown" class="column-chooser-dropdown hidden"></div>
+
+                <div class="pagination-controls">
+                    <button class="dg-btn-icon" id="prev-page-btn" title="Previous Page">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="page-info" id="page-size-btn" title="Change Page Size">{{.Limit}}</span>
+                    <button class="dg-btn-icon" id="next-page-btn" title="Next Page">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <form id="filter-form" class="hidden">
             <input type="hidden" name="limit" id="limit-input" value="{{.Limit}}">
             <input type="hidden" name="offset" id="offset-input" value="{{.Offset}}">
-            {{range .UIColumns}}
-            {{if .LOV}}
-            <!-- Placeholder for select values to be included in HTMX requests -->
-            {{end}}
-            {{end}}
         </form>
+    </div>
 
-        <div class="actions-group">
-            <button class="btn btn-icon-only" id="column-chooser-btn" title="Choose Columns">
-                <i class="fas fa-columns"></i>
-            </button>
-            <div class="pagination-controls">
-                <button class="pagination-btn" id="prev-page-btn" title="Previous Page">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <button id="page-size-btn" title="Change Page Size">{{.Limit}}</button>
-                <button class="pagination-btn" id="next-page-btn" title="Next Page">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
+    <div class="grid-main-layout">
+        <div id="meta-list-container" class="grid-content-area" hx-get="{{.ListEndpoint}}" hx-trigger="load"
+            hx-include=".search-input, #filter-form">
+            <div class="loading-state">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
             </div>
         </div>
-    </div>
 
-    <div id="meta-list-container" class="meta-table-wrapper" hx-get="{{.ListEndpoint}}" hx-trigger="load">
-        <!-- table.html will be loaded here -->
-        <div class="text-center p-4">
-            <i class="fas fa-spinner fa-spin"></i> Loading...
-        </div>
-    </div>
-</div>
-
-<!-- Right Sidebar for Details -->
-<div id="right-sidebar" class="sidebar-right">
-    <div class="sidebar-header">
-        <h3><i class="fas fa-info-circle"></i> Details</h3>
-        <button class="btn btn-icon-only" onclick="$('#right-sidebar').removeClass('active')" title="Close">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
-    <div class="sidebar-content" id="sidebar-details">
-        <div class="text-muted p-4">Select a row to see details</div>
+        <!-- Right Sidebar for Record Detail -->
+        <aside id="record-detail-sidebar" class="sidebar-detail sidebar-right-panel">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-id-card"></i> Record Detail</h3>
+                <button class="dg-btn-icon" data-action="toggle-sidebar" title="Collapse">
+                    <i class="fas fa-angle-right"></i>
+                </button>
+            </div>
+            <div class="sidebar-content" id="sidebar-detail-content">
+                <div class="dg-empty-state">
+                    <i class="fas fa-mouse-pointer"></i>
+                    <p>Select a record to view details</p>
+                </div>
+            </div>
+        </aside>
     </div>
 </div>
 
@@ -75,10 +88,6 @@
 <div id="meta-context-menu" class="context-menu hidden">
     <div class="context-menu-item" id="ctx-copy-id">
         <i class="fas fa-copy"></i> Copy ID
-    </div>
-    <div class="context-menu-separator"></div>
-    <div class="context-menu-item" id="ctx-view-json">
-        <i class="fas fa-code"></i> View Raw JSON
     </div>
 </div>
 {{end}}

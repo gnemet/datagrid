@@ -18,6 +18,7 @@ type UIColumn struct {
 	Sortable bool      `json:"sortable"`
 	Visible  bool      `json:"visible"`
 	Record   bool      `json:"record"` // Include in detail sidebar
+	Icon     string    `json:"icon,omitempty"`
 	LOV      []LOVItem `json:"lov,omitempty"`
 }
 
@@ -42,11 +43,18 @@ type DatagridConfig struct {
 	Operations Operations                   `json:"operations"`
 	Filters    map[string]FilterDef         `json:"filters"`
 	Columns    map[string]DatagridColumnDef `json:"columns"`
-	Searchable []string                     `json:"searchable_columns"`
+	Searchable SearchableConfig             `json:"searchable"`
+}
+
+type SearchableConfig struct {
+	Columns   []string `json:"columns"`
+	Operator  string   `json:"operator"`
+	Threshold float64  `json:"threshold"`
 }
 
 type DatagridDefaults struct {
-	PageSize      int                    `json:"page_size"`
+	PageSize      int                    `json:"page_size_default"` // Helper for template
+	PageSizes     []int                  `json:"page_size"`
 	SortColumn    string                 `json:"sort_column"`
 	SortDirection string                 `json:"sort_direction"`
 	Filters       map[string]interface{} `json:"filters"`
@@ -67,6 +75,8 @@ type FilterDef struct {
 type DatagridColumnDef struct {
 	Visible bool              `json:"visible"`
 	Labels  map[string]string `json:"labels"`
+	Icon    string            `json:"icon,omitempty"`
+	LOV     interface{}       `json:"lov,omitempty"`
 }
 
 type ObjectDef struct {
@@ -136,6 +146,11 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		return nil, err
 	}
 
+	// Populate PageSize helper for templates
+	if len(cat.Datagrid.Defaults.PageSizes) > 0 {
+		cat.Datagrid.Defaults.PageSize = cat.Datagrid.Defaults.PageSizes[0]
+	}
+
 	fmt.Printf("DEBUG DATAGRID: Catalog Version: %s, Objects: %d\n", cat.Version, len(cat.Objects))
 	if len(cat.Objects) == 0 {
 		return nil, fmt.Errorf("no objects found in catalog")
@@ -154,13 +169,17 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		}
 
 		visible := true
+		var icon string
+		var overrideLov interface{}
 		if override, ok := cat.Datagrid.Columns[col.Name]; ok {
 			visible = override.Visible
+			icon = override.Icon
 			if l, ok := override.Labels[lang]; ok {
 				label = l
 			} else if l, ok := override.Labels["en"]; ok {
 				label = l
 			}
+			overrideLov = override.LOV
 		}
 
 		// Process LOV (Static list or Dynamic SQL)
@@ -172,8 +191,13 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 			}
 		}
 
-		// 2. Add Inline LOV if present
-		switch v := col.LOV.(type) {
+		// 2. Add Inline/Override LOV (Dynamic SQL or Static List)
+		lovSource := col.LOV
+		if overrideLov != nil {
+			lovSource = overrideLov
+		}
+
+		switch v := lovSource.(type) {
 		case string: // Dynamic SQL
 			query := strings.ReplaceAll(v, "{lang}", lang)
 			rows, err := db.Query(query)
@@ -197,13 +221,33 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 								li.Labels[k] = s
 							}
 						}
+					} else if labels, ok := m["label"].(map[string]interface{}); ok { // Handle "label" as object
+						li.Labels = make(map[string]string)
+						for k, v := range labels {
+							if s, ok := v.(string); ok {
+								li.Labels[k] = s
+							}
+						}
 					}
 					if s, ok := m["label"].(string); ok {
 						li.Label = s
-					} else if m["label"] != nil {
+					} else if m["label"] != nil && li.Label == "" {
 						li.Label = fmt.Sprintf("%v", m["label"])
 					}
-					lovItems = append(lovItems, li)
+
+					processed := processLovItem(li, lang)
+
+					// Only add if not duplicate
+					isDup := false
+					for _, existing := range lovItems {
+						if existing.Value == processed.Value {
+							isDup = true
+							break
+						}
+					}
+					if !isDup {
+						lovItems = append(lovItems, processed)
+					}
 				}
 			}
 		}
@@ -215,6 +259,7 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 			Visible:  visible,
 			Record:   true,
 			Type:     strings.ToLower(col.Type),
+			Icon:     icon,
 			LOV:      lovItems,
 		})
 	}
@@ -260,8 +305,8 @@ func (h *Handler) ParseParams(r *http.Request) RequestParams {
 	limit := 10
 	if l := q.Get("limit"); l != "" {
 		fmt.Sscanf(l, "%d", &limit)
-	} else if h.Config.Defaults.PageSize > 0 {
-		limit = h.Config.Defaults.PageSize
+	} else if len(h.Config.Defaults.PageSizes) > 0 {
+		limit = h.Config.Defaults.PageSizes[0]
 	}
 
 	offset := 0
@@ -286,26 +331,35 @@ func (h *Handler) ParseParams(r *http.Request) RequestParams {
 }
 
 func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
+	// Start transaction to use SET LOCAL for threshold
+	tx, err := h.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	if h.Config.Searchable.Operator == "%" && h.Config.Searchable.Threshold > 0 {
+		_, err := tx.Exec(fmt.Sprintf("SET LOCAL pg_trgm.similarity_threshold = %f", h.Config.Searchable.Threshold))
+		if err != nil {
+			fmt.Printf("DEBUG DATAGRID: SET threshold error: %v\n", err)
+		}
+	}
+
 	where, args := h.buildWhere(p)
 	order := h.buildOrder(p.Sort)
 
 	// Get total count
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s %s", h.TableName, where)
 	var total int
-	if err := h.DB.QueryRow(countQuery, args...).Scan(&total); err != nil {
+	if err := tx.QueryRow(countQuery, args...).Scan(&total); err != nil {
 		return nil, err
 	}
 
-	// Fetch records
-	selectCols := []string{}
-	for _, c := range h.Columns {
-		selectCols = append(selectCols, c.Field)
-	}
+	// Fetch records - Select all columns for Forensic DOM metadata
+	query := fmt.Sprintf("SELECT * FROM %s %s %s LIMIT %d OFFSET %d",
+		h.TableName, where, order, p.Limit, p.Offset)
 
-	query := fmt.Sprintf("SELECT %s FROM %s %s %s LIMIT %d OFFSET %d",
-		strings.Join(selectCols, ", "), h.TableName, where, order, p.Limit, p.Offset)
-
-	rows, err := h.DB.Query(query, args...)
+	rows, err := tx.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -325,20 +379,29 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 		}
 
 		row := make(map[string]interface{})
+		fullRow := make(map[string]interface{})
 		for i, col := range cols {
 			val := values[i]
+			var renderedVal interface{}
 			if b, ok := val.([]byte); ok {
-				row[col] = string(b)
+				renderedVal = string(b)
 			} else {
-				row[col] = val
+				renderedVal = val
 			}
+			fullRow[col] = renderedVal
+			row[col] = renderedVal
 		}
 
-		if jsonBytes, err := json.Marshal(row); err == nil {
+		// Forensic DOM: Attach full row metadata
+		if jsonBytes, err := json.Marshal(fullRow); err == nil {
 			row["_json"] = string(jsonBytes)
 		}
 
 		records = append(records, row)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
 	}
 
 	return &TableResult{
@@ -401,16 +464,20 @@ func (h *Handler) buildWhere(p RequestParams) (string, []interface{}) {
 		}
 
 		if len(paramParts) > 0 {
-			clauses = append(clauses, fmt.Sprintf("%s IN (%s)", colName, strings.Join(paramParts, ", ")))
+			finalCol := colName
+			if !strings.Contains(finalCol, "->") && !strings.Contains(finalCol, "(") && !strings.Contains(finalCol, "\"") {
+				finalCol = fmt.Sprintf("\"%s\"", finalCol)
+			}
+			clauses = append(clauses, fmt.Sprintf("%s IN (%s)", finalCol, strings.Join(paramParts, ", ")))
 		}
 	}
 
 	// Search
 	if p.Search != "" {
 		searchCols := []string{}
-		if len(h.Config.Searchable) > 0 {
-			for _, sc := range h.Config.Searchable {
-				searchCols = append(searchCols, fmt.Sprintf("%s::text", sc))
+		if len(h.Config.Searchable.Columns) > 0 {
+			for _, sc := range h.Config.Searchable.Columns {
+				searchCols = append(searchCols, fmt.Sprintf("(%s)::text", sc))
 			}
 		} else {
 			// Fallback: search in all text/unknown columns
@@ -422,7 +489,17 @@ func (h *Handler) buildWhere(p RequestParams) (string, []interface{}) {
 		}
 
 		if len(searchCols) > 0 {
-			clauses = append(clauses, fmt.Sprintf("$%d %% ANY(ARRAY[%s])", argIdx, strings.Join(searchCols, ", ")))
+			op := h.Config.Searchable.Operator
+			if op == "" {
+				op = "%" // Default to similarity
+			}
+
+			orClauses := []string{}
+			for _, col := range searchCols {
+				orClauses = append(orClauses, fmt.Sprintf("%s %s $%d::text", col, op, argIdx))
+			}
+			clauses = append(clauses, "("+strings.Join(orClauses, " OR ")+")")
+
 			args = append(args, p.Search)
 			argIdx++
 		}
@@ -436,12 +513,20 @@ func (h *Handler) buildWhere(p RequestParams) (string, []interface{}) {
 }
 
 func (h *Handler) buildOrder(sorts []string) string {
+	validateDir := func(d string) string {
+		d = strings.ToUpper(d)
+		valid := []string{"ASC", "DESC", "ASC NULLS FIRST", "ASC NULLS LAST", "DESC NULLS FIRST", "DESC NULLS LAST"}
+		for _, v := range valid {
+			if d == v {
+				return d
+			}
+		}
+		return "ASC"
+	}
+
 	defaultSort := "ORDER BY id DESC"
 	if h.Config.Defaults.SortColumn != "" {
-		dir := "ASC"
-		if strings.ToUpper(h.Config.Defaults.SortDirection) == "DESC" {
-			dir = "DESC"
-		}
+		dir := validateDir(h.Config.Defaults.SortDirection)
 		defaultSort = fmt.Sprintf("ORDER BY %s %s", h.Config.Defaults.SortColumn, dir)
 	}
 
@@ -457,9 +542,36 @@ func (h *Handler) buildOrder(sorts []string) string {
 
 	clauses := []string{}
 	for _, s := range allSorts {
-		parts := strings.Split(s, ":")
-		if len(parts) == 2 {
-			field := parts[0]
+		field := s
+		dirStr := "ASC"
+
+		// Try splitting by colon or space
+		if strings.Contains(s, ":") {
+			parts := strings.Split(s, ":")
+			field = parts[0]
+			dirStr = parts[1]
+		} else if strings.Contains(s, " ") {
+			parts := strings.Split(s, " ")
+			field = parts[0]
+			dirStr = strings.Join(parts[1:], " ")
+		}
+
+		dbCol := field
+		if strings.HasPrefix(field, "dyn-") {
+			// Extract JSON path: dyn-data.role -> data->>'role'
+			path := strings.TrimPrefix(field, "dyn-")
+			pp := strings.Split(path, ".")
+			if len(pp) > 1 {
+				dbCol = pp[0]
+				for i := 1; i < len(pp); i++ {
+					if i == len(pp)-1 {
+						dbCol += fmt.Sprintf("->>'%s'", pp[i])
+					} else {
+						dbCol += fmt.Sprintf("->'%s'", pp[i])
+					}
+				}
+			}
+		} else {
 			found := false
 			for _, col := range h.Columns {
 				if col.Field == field {
@@ -470,12 +582,13 @@ func (h *Handler) buildOrder(sorts []string) string {
 			if !found && field != "id" {
 				continue
 			}
-			dir := strings.ToUpper(parts[1])
-			if dir != "ASC" && dir != "DESC" {
-				dir = "ASC"
-			}
-			clauses = append(clauses, fmt.Sprintf("%s %s", field, dir))
 		}
+
+		dir := validateDir(dirStr)
+		if !strings.Contains(dbCol, "->") && !strings.Contains(dbCol, "(") && !strings.Contains(dbCol, "\"") {
+			dbCol = fmt.Sprintf("\"%s\"", dbCol)
+		}
+		clauses = append(clauses, fmt.Sprintf("%s %s", dbCol, dir))
 	}
 
 	if len(clauses) == 0 {

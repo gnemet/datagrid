@@ -1,0 +1,146 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Datagrid UI Schema",
+    "description": "Validation for the UI/UX components of the catalog",
+    "type": "object",
+    "required": [
+        "version",
+        "datagrid"
+    ],
+    "properties": {
+        "version": {
+            "$ref": "common.schema.json#/definitions/version"
+        },
+        "title": {
+            "type": "string"
+        },
+        "icon": {
+            "type": "string"
+        },
+        "datagrid": {
+            "type": "object",
+            "required": [
+                "columns"
+            ],
+            "properties": {
+                "defaults": {
+                    "type": "object",
+                    "properties": {
+                        "page_size_default": {
+                            "type": "integer"
+                        },
+                        "page_size": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            },
+                            "default": [
+                                10,
+                                25,
+                                50,
+                                100
+                            ]
+                        },
+                        "sort_column": {
+                            "type": "string"
+                        },
+                        "sort_direction": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc",
+                                "asc nulls first",
+                                "asc nulls last",
+                                "desc nulls first",
+                                "desc nulls last"
+                            ]
+                        }
+                    }
+                },
+                "columns": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                            "visible": {
+                                "type": "boolean"
+                            },
+                            "labels": {
+                                "$ref": "common.schema.json#/definitions/multi_lang_label"
+                            },
+                            "icon": {
+                                "type": "string"
+                            },
+                            "lov": {
+                                "description": "Override LOV definition (string for dynamic SQL, array for static list)",
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "common.schema.json#/definitions/lov_item"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "filters": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                            "column": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "text",
+                                    "number",
+                                    "boolean",
+                                    "int_bool",
+                                    "date"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "searchable": {
+                    "type": "object",
+                    "properties": {
+                        "columns": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "operator": {
+                            "type": "string",
+                            "enum": [
+                                "%",
+                                "~",
+                                "~*",
+                                "~~",
+                                "~~*",
+                                "=",
+                                "LIKE",
+                                "ILIKE"
+                            ],
+                            "default": "%"
+                        },
+                        "threshold": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.3
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
