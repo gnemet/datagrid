@@ -186,22 +186,8 @@ body {
     overflow: hidden;
     position: relative;
     box-sizing: border-box;
-}
-
-/* Host Integrated Override: Explicitly sizing for Jiramntr layout */
-.host-integrated {
-    padding: 10px 0;
-    height: 100%;
-    display: flex;
-}
-
-.host-integrated .datagrid-wrapper {
-    height: calc(100vh - 140px);
-    /* Leave room for header (50px) + padding (20px*2) + breadcrumbs (30px) + safety */
     border: 1px solid var(--dg-border);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    background: var(--dg-bg);
+    border-radius: var(--radius-md);
 }
 
 .grid-main-layout {
