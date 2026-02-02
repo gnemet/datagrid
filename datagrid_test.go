@@ -85,7 +85,7 @@ func TestBuildOrder(t *testing.T) {
 
 func TestIntegrationFetchData(t *testing.T) {
 	// Try to load .env from project root
-	_ = godotenv.Load("../../.env")
+	_ = godotenv.Load(".env")
 
 	host := os.Getenv("DB_HOST")
 	if host == "" {
