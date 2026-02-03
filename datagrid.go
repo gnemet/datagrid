@@ -45,6 +45,8 @@ type Catalog struct {
 	Version  string         `json:"version"`
 	Title    string         `json:"title,omitempty"`
 	Icon     string         `json:"icon,omitempty"`
+	Type     string         `json:"type,omitempty"`
+	CSSClass string         `json:"css_class,omitempty"`
 	Datagrid DatagridConfig `json:"datagrid,omitempty"`
 	Objects  []ObjectDef    `json:"objects"`
 }
@@ -124,6 +126,7 @@ type TableResult struct {
 	Limit      int
 	UIColumns  []UIColumn
 	Config     DatagridConfig
+	Lang       string // For localization in templates
 }
 
 // Handler handles the grid data requests
@@ -133,6 +136,7 @@ type Handler struct {
 	Columns   []UIColumn
 	Config    DatagridConfig
 	Catalog   Catalog
+	Lang      string
 }
 
 func NewHandler(db *sql.DB, tableName string, cols []UIColumn, cfg DatagridConfig) *Handler {
@@ -346,6 +350,7 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		TableName: obj.Name,
 		Columns:   uiCols,
 		Config:    cat.Datagrid,
+		Lang:      lang,
 	}, nil
 }
 
@@ -544,6 +549,7 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 		Limit:      p.Limit,
 		UIColumns:  h.Columns,
 		Config:     h.Config,
+		Lang:       h.Lang,
 	}, nil
 }
 

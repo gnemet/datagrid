@@ -6,7 +6,7 @@
             <th class="{{if .Class}}{{.Class}}{{else}}col-{{.Field}}{{end}}{{if not .Visible}} hidden-col{{end}}{{if .Sortable}} sortable{{end}}"
                 title="{{.Label}}" data-field="{{.Field}}" data-label="{{.Label}}" data-sortable="{{.Sortable}}"
                 draggable="true">
-                {{if .Icon}}<i class="fas {{.Icon}}"></i>
+                {{if .Icon}}<i class="fas {{if not (contains .Icon `fa-`)}}fa-{{end}}{{.Icon}}"></i>
                 {{else}}{{.Label}}
                 {{end}}
                 <div class="resizer"></div>
@@ -16,7 +16,7 @@
     </thead>
     <tbody>
         {{range .Records}}
-        <tr data-id="{{.id}}" data-json="{{._json}}" {{if ._row_style}}style="{{._row_style}}" {{end}}{{if
+        <tr data-id="{{.id}}" data-json="{{._json}}" {{if ._row_style}}style="{{._row_style}}" {{end}} {{if
             ._row_class}}class="{{._row_class}}" {{end}}>
             {{$row := .}}
             {{range $.UIColumns}}
@@ -32,21 +32,15 @@
                 {{$val := index $row .Field}}
                 {{$lovItem := ""}}
                 {{if .LOV}}
-                {{range .LOV}}
-                {{if eq .Value $val}}
-                {{$lovItem = .}}
-                {{end}}
-                {{end}}
+                {{range .LOV}}{{if eq .Value $val}}{{$lovItem = .}}{{end}}{{end}}
                 {{end}}
 
                 {{if $lovItem}}
                 {{if $lovItem.Display}}
-                {{/* If display looks like icon classes (contains fa-), render as icon */}}
-                {{if (contains $lovItem.Display "fa-")}}
-                <i class="{{replace $lovItem.Display (printf " %%%s%%" .Field) (printf "%v" $val)}}"></i>
+                {{if (contains $lovItem.Display `fa-`)}}
+                <i class="fas {{replace $lovItem.Display (printf `%%%s%%` .Field) (printf `%v` $val)}}"></i>
                 {{else}}
-                {{/* Otherwise render as text/html with substitution */}}
-                {{replace $lovItem.Display (printf "%%%s%%" .Field) (printf "%v" $val)}}
+                {{replace $lovItem.Display (printf `%%%s%%` .Field) (printf `%v` $val)}}
                 {{end}}
                 {{else if $lovItem.Label}}
                 {{$lovItem.Label}}
@@ -62,7 +56,7 @@
         </tr>
         {{else}}
         <tr>
-            <td colspan="{{len .UIColumns}}" class="text-center text-muted">{{T "no_records_found"}}</td>
+            <td colspan="{{len .UIColumns}}" class="text-center text-muted">{{T .Lang `no_records_found` }}</td>
         </tr>
         {{end}}
     </tbody>

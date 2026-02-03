@@ -221,7 +221,7 @@ body {
 .dg-breadcrumb-bar {
     display: flex;
     align-items: center;
-    padding: 6px 16px;
+    padding: 6px 1.25rem;
     background: var(--dg-breadcrumb-bg, #ffffff);
     border-bottom: 1px solid var(--dg-border);
     font-size: 0.85rem;
@@ -254,15 +254,9 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 16px;
+    padding: 8px 1.25rem;
 }
 
-.right-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: auto;
-}
 
 #page-size-btn {
     cursor: pointer;
@@ -286,8 +280,13 @@ body {
     display: flex;
     align-items: center;
     gap: var(--dg-toolbar-gap, 12px);
-    width: 100%;
-    /* Ensure it spans if needed */
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 12px;
 }
 
 .search-wrapper {
