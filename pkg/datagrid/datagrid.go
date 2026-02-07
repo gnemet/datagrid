@@ -336,6 +336,7 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		}
 
 		// Hardcode Elimination: Automatically add generic classes based on metadata
+		nameLower := strings.ToLower(col.Name)
 		if isNumericType(col.Type) {
 			if cssClass != "" {
 				cssClass = "col-number " + cssClass
@@ -343,7 +344,7 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 				cssClass = "col-number"
 			}
 		}
-		if col.PrimaryKey || strings.ToLower(col.Name) == "id" {
+		if col.PrimaryKey || nameLower == "id" || nameLower == "sid" {
 			if cssClass != "" {
 				cssClass = "col-id " + cssClass
 			} else {
