@@ -59,8 +59,12 @@ jobs:
           VER=${{ steps.version_check.outputs.version }}
           
           # Cleanup old releases/tags (Single Release Policy)
-          echo "Cleaning up old releases..."
-          gh release list --limit 100 | cut -f 1 | xargs -I {} gh release delete {} --yes --cleanup-tag || true
+          echo "Checking for existing releases..."
+          RELEASES=$(gh release list --limit 100 | cut -f 1)
+          if [ ! -z "$RELEASES" ]; then
+            echo "Cleaning up old releases..."
+            echo "$RELEASES" | xargs -I {} gh release delete {} --yes --cleanup-tag
+          fi
           
           gh release create "$TAG_NAME" \
             "dist/datagrid-$VER.tar.gz" \
@@ -105,19 +109,26 @@ jobs:
             PKG="datagrid-${{ needs.release.outputs.version }}.tar.gz"
             DIR="datagrid-${{ needs.release.outputs.version }}"
             
+            if [ ! -f "$PKG" ]; then
+              echo "Error: Package $PKG not found!"
+              exit 1
+            fi
+
             echo "Extracting $PKG..."
+            rm -rf $DIR # Ensure clean extraction
             tar -xzvf $PKG
             
             echo "Running installation script..."
             cd $DIR
+            chmod +x deploy/install.sh
             sudo ./deploy/install.sh
             
-            echo "Restarting Datagrid service..."
-            sudo systemctl restart datagrid || sudo systemctl start datagrid
+            echo "Cleaning up package..."
+            rm ../$PKG
             
-            # Cleanup old deployment directories
+            # Cleanup old deployment directories (Keep only current and previous)
             echo "Cleaning up old deployments..."
             cd ..
-            ls -dt datagrid-* | tail -n +2 | xargs -r rm -rf
+            ls -dt datagrid-* | grep -v "$DIR" | tail -n +2 | xargs -r rm -rf || true
             
             echo "Deployment of version ${{ needs.release.outputs.version }} successful!"

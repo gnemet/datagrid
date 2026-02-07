@@ -24,11 +24,14 @@ sudo mkdir -p $INSTALL_DIR/database
 echo "Copying files..."
 sudo cp testapp $INSTALL_DIR/
 sudo cp config.yaml $INSTALL_DIR/
-sudo cp -r ui/static $INSTALL_DIR/ui/
-sudo cp -r ui/templates $INSTALL_DIR/ui/
-sudo cp -r catalog/*.json $INSTALL_DIR/catalog/
-sudo cp -r database/*.sql $INSTALL_DIR/database/
-sudo cp -r opt/envs $INSTALL_DIR/opt/
+
+# Use / to ensure content is copied, not the directory itself if it exists
+sudo cp -r ui/static/. $INSTALL_DIR/ui/static/ 2>/dev/null || sudo cp -r ui/static $INSTALL_DIR/ui/
+sudo cp -r ui/templates/. $INSTALL_DIR/ui/templates/ 2>/dev/null || sudo cp -r ui/templates $INSTALL_DIR/ui/
+sudo cp -r catalog/. $INSTALL_DIR/catalog/ 2>/dev/null || sudo cp -r catalog/*.json $INSTALL_DIR/catalog/
+sudo cp -r database/. $INSTALL_DIR/database/ 2>/dev/null || sudo cp -r database/*.sql $INSTALL_DIR/database/
+sudo cp -r opt/envs/. $INSTALL_DIR/opt/envs/ 2>/dev/null || sudo cp -r opt/envs $INSTALL_DIR/opt/
+
 sudo cp scripts/switch_env.sh $INSTALL_DIR/
 sudo chmod +x $INSTALL_DIR/switch_env.sh
 sudo chmod +x $INSTALL_DIR/testapp
@@ -46,4 +49,5 @@ sudo systemctl enable $APP_NAME
 echo "Installation complete!"
 echo "1. Switch environment: cd $INSTALL_DIR && sudo ./switch_env.sh PROD"
 echo "2. Edit config if needed: sudo nano $INSTALL_DIR/.env"
-echo "3. Start service: sudo systemctl start $APP_NAME"
+echo "3. Start service: sudo systemctl restart $APP_NAME"
+echo "4. Check status: sudo systemctl status $APP_NAME"

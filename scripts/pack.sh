@@ -14,7 +14,7 @@ mkdir -p $DIST_DIR
 # Build
 echo "Building binary..."
 go mod tidy
-GOOS=linux GOARCH=amd64 go build -o $DIST_DIR/testapp ./cmd/testapp/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $DIST_DIR/testapp ./cmd/testapp/main.go
 
 # Copy Assets
 echo "Copying assets..."
