@@ -1,0 +1,42 @@
+# Antigravity AI Access Restrictions
+# Baseline patterns to ignore sensitive files and secrets
+
+# Environment & Secrets
+.env
+.env*
+*.env
+secrets/
+*.secret
+credentials*
+
+# Private Keys & Certificates
+*.pem
+*.key
+*.pub
+*.crt
+*.cert
+*.p12
+*.pfx
+
+# User-specific / Local Configs
+.ssh/
+.aws/
+.kube/
+.config/
+.gemini/
+.antigravity/
+
+# Database / Storage Dumps
+*.sql
+*.sqlite
+*.db
+*.dump
+
+# Large/Temporary Binary Files
+bin/
+*.exe
+*.so
+*.dylib
+*.dll
+node_modules/
+vendor/

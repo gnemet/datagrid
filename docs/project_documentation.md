@@ -58,6 +58,9 @@ LOVs drive both UI dropdowns and server-side filter validation:
 - **Modernization**: Updated `CursorApp` with premium breadcrumbs and indicators while maintaining FontAwesome compatibility.
 - **Structural Integrity**: Migrated core logic to `pkg/datagrid/` to restore external importability (Standard Go Library pattern).
 - **Schema Consolidation**: Grouped JSON schemas in `internal/data/schemas/` and isolated MCP keys from Datagrid logic.
+- **Rule Enforcement**: Strictly applied the **No-Inline Style** policy and implemented a **Forensic DOM** with `data-sort` and `data-row-style` attributes for state auditability.
+- **DWH Compatibility**: Enhanced identifier detection to automatically support `sid` (Session/Record ID) alongside standard `id` and primary keys.
+- **Security Lockdown**: Established AI access restrictions via `.antigravityignore`, blocking sensitive environment variables, private keys, and local credentials.
 
 ## Usage Guide
 ### Running CursorApp
