@@ -29,7 +29,9 @@ This document codifies the mandatory standards for the standalone `datagrid` lib
 - **JSON Expansion**: Dynamic column injection for nested JSONB data keys to facilitate forensic data analysis.
 
 ### 2. Iconographic Precedence
-- **Metadata-Driven Icons**: Icons for specific columns MUST NOT be hardcoded in templates. They must be defined in the catalog using the `icon` property (e.g., `"icon": "fa-fingerprint"`).
+- **Metadata-Driven Icons**: Icons for specific columns MUST NOT be hardcoded in templates. They must be defined in the catalog using the `icon` property.
+- **Dual Library Support**: Supports both **FontAwesome** (`fas`) and **Phosphor** (`ph`). Toggled via `iconStyleLibrary` in the catalog.
+- **Auto-Prefixing**: Templates MUST handle icon names with or without library prefixes (`fa-`, `ph-`) for maximum catalog flexibility.
 - **Graceful Fallback**: Templates MUST check for the existence of an icon in the metadata and fallback to labels only if no icon is defined.
 - **Action Buttons**: ALWAYS use icon-only buttons with `title` attributes for tooltips in the toolbar. This should also be driven by action metadata.
 
@@ -38,4 +40,4 @@ This document codifies the mandatory standards for the standalone `datagrid` lib
 - **Tabular Nums**: Numeric columns MUST use monospaced fonts (`JetBrains Mono`) and `tabular-nums` for alignment.
 
 ---
-*Standardized for Datagrid v1.2.0 | Antigravity AI Powered Coding*
+*Standardized for Datagrid v1.5.1 | Antigravity AI Powered Coding*
