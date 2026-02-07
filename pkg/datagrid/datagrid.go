@@ -562,6 +562,7 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 		Config:           h.Config,
 		Lang:             h.Lang,
 		IconStyleLibrary: h.IconStyleLibrary,
+		IsPhosphor:       h.IconStyleLibrary == "Phosphor",
 	}
 	fmt.Printf("DEBUG: FetchData IconStyleLibrary='%s' (len=%d)\n", res.IconStyleLibrary, len(res.IconStyleLibrary))
 	return res, nil

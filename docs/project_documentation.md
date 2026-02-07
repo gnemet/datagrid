@@ -41,7 +41,10 @@ LOVs drive both UI dropdowns and server-side filter validation:
 - **Schema Isolation**: Datagrid logic is isolated from MCP extensions via separate schema validation in `internal/data/schemas/`.
 
 ### UI Integration Standards
-- **Icons**: FontAwesome (`fas`) is the standard icon set for compatibility.
+- **Icons**: Supports both **FontAwesome** (`fas`) and **Phosphor** (`ph`) icon libraries.
+    - **Configuration**: Set `iconStyleLibrary` to `"Phosphor"` or `"FontAwesome"` (default) in the catalog's `datagrid` section.
+    - **Asset Loading**: Templates automatically toggle between FontAwesome (CDN) and Phosphor (local vendor) based on this setting.
+    - **Class Handling**: The engine automatically prefixes icon names if the library prefix is missing, ensuring resilience.
 - **Navigation**: Uses directional pagination (FIRST, PRIOR, NEXT, LAST).
 - **Aesthetics**: Adopts premium breadcrumb-style headers and glassmorphism-inspired components.
 
