@@ -27,7 +27,7 @@ A high-performance, metadata-driven datagrid component library for Go and HTMX, 
   - **JSON Key Expansion**: Dynamically expand nested JSON objects into table columns at runtime.
 - **Persistence Layer**: Automatic persistence of column visibility, width, order, and sorting in `localStorage`.
 - **Comprehensive Testing Tools**:
-  - Built-in data generator (`generate_data.py`) creating realistic, relational datasets for stress testing.
+  - Built-in data generator (`scripts/generate_data.py`) creating realistic, relational datasets for stress testing.
 
 ## 🛠 Architectural Identity
 
@@ -37,7 +37,7 @@ A high-performance, metadata-driven datagrid component library for Go and HTMX, 
 
 ## 📋 Catalog Configuration
 
-The datagrid behavior is defined by its JSON catalog, validated against the [`datagrid.schema.json`](file:///home/gnemet/GitHub/datagrid/schemas/datagrid.schema.json).
+The datagrid behavior is defined by its JSON catalog, validated against the [`datagrid.schema.json`](file:///home/gnemet/GitHub/datagrid/internal/data/schemas/datagrid.schema.json).
 
 ### Example Searchable Config
 ```json
@@ -62,13 +62,13 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 ```
 
 ### Quick Run
-The build script automatically checks for `data.sql`. If missing, it uses `generate_data.py` to create a 100-row realistic dataset (v1.2.0).
+The build script automatically checks for `internal/data/sql/seed.sql`. If missing, it uses `scripts/generate_data.py` to create a 100-row realistic dataset (v1.2.0).
 ```bash
 ./build_run.sh
 ```
 
 ## 📄 Documentation
-For detailed technical implementation details, see [docs/datagrid.md](file:///home/gnemet/GitHub/datagrid/docs/datagrid.md).
+For detailed technical implementation details, see [docs/project_documentation.md](file:///home/gnemet/GitHub/datagrid/docs/project_documentation.md).
 
 ## License
 MIT

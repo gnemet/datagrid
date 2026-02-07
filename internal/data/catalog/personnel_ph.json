@@ -1,0 +1,213 @@
+{
+    "version": "1.2",
+    "objects": [
+        {
+            "name": "datagrid.personnel",
+            "type": "table",
+            "description": "Personnel records with multi-language LOV support.",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "BIGINT",
+                    "primary_key": true
+                },
+                {
+                    "name": "is_valid",
+                    "type": "BOOL"
+                },
+                {
+                    "name": "is_active",
+                    "type": "BOOL"
+                },
+                {
+                    "name": "name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "email",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "department",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "salary",
+                    "type": "NUMERIC"
+                },
+                {
+                    "name": "status",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "other_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "data",
+                    "type": "JSONB"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "iconStyleLibrary": "Phosphor",
+        "defaults": {
+            "page_size": [
+                10,
+                25,
+                50,
+                100
+            ],
+            "sort_column": "id",
+            "sort_direction": "asc",
+            "filters": {
+                "is_valid": true
+            },
+            "search": ""
+        },
+        "operations": {
+            "add": true,
+            "edit": true,
+            "delete": false
+        },
+        "columns": {
+            "id": {
+                "visible": true,
+                "icon": "ph-fingerprint"
+            },
+            "is_valid": {
+                "visible": true,
+                "css": "text-center",
+                "labels": {
+                    "en": "Valid?",
+                    "hu": "Érvényes?"
+                },
+                "lov": [
+                    {
+                        "value": true,
+                        "display": "ph-toggle-right",
+                        "labels": {
+                            "en": "Valid",
+                            "hu": "Érvényes"
+                        },
+                        "rowStyle": "color: green"
+                    },
+                    {
+                        "value": false,
+                        "display": "ph-toggle-left",
+                        "labels": {
+                            "en": "Invalid",
+                            "hu": "Érvénytelen"
+                        },
+                        "rowStyle": "color: red"
+                    }
+                ]
+            },
+            "is_active": {
+                "visible": true,
+                "css": "text-center",
+                "labels": {
+                    "en": "Active?",
+                    "hu": "Aktív?"
+                },
+                "lov": [
+                    {
+                        "value": true,
+                        "display": "%is_active% ph-toggle-right",
+                        "css": "text-left",
+                        "labels": {
+                            "en": "Active",
+                            "hu": "Aktív"
+                        }
+                    },
+                    {
+                        "value": false,
+                        "display": "%is_active% ph-toggle-left",
+                        "labels": {
+                            "en": "Inactive",
+                            "hu": "Inaktív"
+                        }
+                    }
+                ]
+            },
+            "name": {
+                "visible": true,
+                "labels": {
+                    "en": "Full Name",
+                    "hu": "Teljes név"
+                }
+            },
+            "email": {
+                "visible": true,
+                "labels": {
+                    "en": "Email",
+                    "hu": "Email"
+                }
+            },
+            "department": {
+                "visible": true,
+                "labels": {
+                    "en": "Department",
+                    "hu": "Részleg"
+                },
+                "lov": "SELECT code AS value, name_{lang} AS label FROM lov_departments ORDER BY 2"
+            },
+            "salary": {
+                "visible": true,
+                "labels": {
+                    "en": "Earnings",
+                    "hu": "Kereset"
+                }
+            },
+            "status": {
+                "visible": true,
+                "icon": "ph-activity",
+                "labels": {
+                    "en": "Status",
+                    "hu": "Állapot"
+                }
+            },
+            "other_name": {
+                "visible": true,
+                "display": "<span>%name% - %department%</span>",
+                "labels": {
+                    "en": "Other Name",
+                    "hu": "Egyéb Név"
+                }
+            },
+            "data": {
+                "visible": false,
+                "labels": {
+                    "en": "JSON Info",
+                    "hu": "JSON Infó"
+                }
+            }
+        },
+        "filters": {
+            "department": {
+                "column": "department",
+                "type": "text"
+            },
+            "is_valid": {
+                "column": "is_valid",
+                "type": "boolean"
+            },
+            "status": {
+                "column": "status",
+                "type": "text"
+            }
+        },
+        "searchable": {
+            "columns": [
+                "name",
+                "email",
+                "department",
+                "status",
+                "data->>'role'"
+            ],
+            "operator": "%",
+            "threshold": 0.3
+        }
+    }
+}

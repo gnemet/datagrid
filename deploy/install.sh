@@ -17,8 +17,8 @@ fi
 echo "Setting up directories..."
 sudo mkdir -p $INSTALL_DIR/ui
 sudo mkdir -p $INSTALL_DIR/opt/envs
-sudo mkdir -p $INSTALL_DIR/catalog
-sudo mkdir -p $INSTALL_DIR/database
+sudo mkdir -p $INSTALL_DIR/internal/data/catalog
+sudo mkdir -p $INSTALL_DIR/internal/data/sql
 
 # 3. Copy Files
 echo "Copying files..."
@@ -26,10 +26,9 @@ sudo cp testapp $INSTALL_DIR/
 sudo cp config.yaml $INSTALL_DIR/
 
 # Use / to ensure content is copied, not the directory itself if it exists
-sudo cp -r ui/static/. $INSTALL_DIR/ui/static/ 2>/dev/null || sudo cp -r ui/static $INSTALL_DIR/ui/
-sudo cp -r ui/templates/. $INSTALL_DIR/ui/templates/ 2>/dev/null || sudo cp -r ui/templates $INSTALL_DIR/ui/
-sudo cp -r catalog/. $INSTALL_DIR/catalog/ 2>/dev/null || sudo cp -r catalog/*.json $INSTALL_DIR/catalog/
-sudo cp -r database/. $INSTALL_DIR/database/ 2>/dev/null || sudo cp -r database/*.sql $INSTALL_DIR/database/
+sudo cp -r pkg/datagrid/ui/. $INSTALL_DIR/pkg/datagrid/ui/ 2>/dev/null || (sudo mkdir -p $INSTALL_DIR/pkg/datagrid && sudo cp -r pkg/datagrid/ui $INSTALL_DIR/pkg/datagrid/)
+sudo cp -r internal/data/catalog/. $INSTALL_DIR/internal/data/catalog/ 2>/dev/null || sudo cp -r internal/data/catalog/*.json $INSTALL_DIR/internal/data/catalog/
+sudo cp -r internal/data/sql/. $INSTALL_DIR/internal/data/sql/ 2>/dev/null || sudo cp -r internal/data/sql/*.sql $INSTALL_DIR/internal/data/sql/
 sudo cp -r opt/envs/. $INSTALL_DIR/opt/envs/ 2>/dev/null || sudo cp -r opt/envs $INSTALL_DIR/opt/
 
 sudo cp scripts/switch_env.sh $INSTALL_DIR/

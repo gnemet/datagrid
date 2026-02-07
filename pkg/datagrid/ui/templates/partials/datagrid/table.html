@@ -6,7 +6,9 @@
             <th class="{{if .Class}}{{.Class}}{{else}}col-{{.Field}}{{end}}{{if not .Visible}} hidden-col{{end}}{{if .Sortable}} sortable{{end}}"
                 title="{{.Label}}" data-field="{{.Field}}" data-label="{{.Label}}" data-sortable="{{.Sortable}}"
                 draggable="true">
-                {{if .Icon}}<i class="fas {{if not (contains .Icon `fa-`)}}fa-{{end}}{{.Icon}}"></i>
+                {{if .Icon}}
+                <i class="{{if $.IsPhosphor}}ph {{if not (contains .Icon " ph-")}}ph-{{end}}{{else}}fas {{if not
+                    (contains .Icon "fa-" )}}fa-{{end}}{{end}}{{.Icon}}"></i>
                 {{else}}{{.Label}}
                 {{end}}
                 <div class="resizer"></div>
@@ -37,10 +39,13 @@
 
                 {{if $lovItem}}
                 {{if $lovItem.Display}}
-                {{if (contains $lovItem.Display `fa-`)}}
-                <i class="fas {{replace $lovItem.Display (printf `%%%s%%` .Field) (printf `%v` $val)}}"></i>
+                {{$disp := replace $lovItem.Display (printf "%%%s%%" .Field) (printf "%v" $val)}}
+                {{if (contains $lovItem.Display "ph-")}}
+                <i class="ph {{$disp}}"></i>
+                {{else if (contains $lovItem.Display "fa-")}}
+                <i class="fas {{$disp}}"></i>
                 {{else}}
-                {{replace $lovItem.Display (printf `%%%s%%` .Field) (printf `%v` $val)}}
+                <i class="{{if $.IsPhosphor}}ph ph-{{else}}fas fa-{{end}}{{$disp}}"></i>
                 {{end}}
                 {{else if $lovItem.Label}}
                 {{$lovItem.Label}}
@@ -56,7 +61,7 @@
         </tr>
         {{else}}
         <tr>
-            <td colspan="{{len .UIColumns}}" class="text-center text-muted">{{T .Lang `no_records_found` }}</td>
+            <td colspan="{{len .UIColumns}}" class="text-center text-muted">{{T `no_records_found` }}</td>
         </tr>
         {{end}}
     </tbody>

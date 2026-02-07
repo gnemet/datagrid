@@ -7,19 +7,19 @@ TARGET=$1
 # If no argument provided, try auto-detection
 if [ -z "$TARGET" ]; then
     CURRENT_HOST=$(hostname)
-    if [ -f "opt/envs/.env_$CURRENT_HOST" ]; then
+    if [ -f "config/envs/.env_$CURRENT_HOST" ]; then
         TARGET="$CURRENT_HOST"
         echo "Detected Host: $CURRENT_HOST -> Selecting '$TARGET'"
     else
-        echo "Unknown host: $CURRENT_HOST (File opt/envs/.env_$CURRENT_HOST not found)"
+        echo "Unknown host: $CURRENT_HOST (File config/envs/.env_$CURRENT_HOST not found)"
         echo "Example usage: ./scripts/switch_env.sh LOCAL"
-        echo "Currently available environments in opt/envs/:"
-        ls opt/envs/
+        echo "Currently available environments in config/envs/:"
+        ls config/envs/
         exit 1
     fi
 fi
 
-SOURCE_FILE="opt/envs/.env_${TARGET}"
+SOURCE_FILE="config/envs/.env_${TARGET}"
 
 if [ ! -f "$SOURCE_FILE" ]; then
     echo "Error: Source file '$SOURCE_FILE' does not exist."

@@ -10,7 +10,7 @@ import (
 
 	"strings"
 
-	"github.com/gnemet/datagrid"
+	"github.com/gnemet/datagrid/pkg/datagrid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"gopkg.in/yaml.v3"
@@ -99,8 +99,8 @@ func main() {
 	funcMap := datagrid.TemplateFuncs()
 	funcMap["T"] = func(s string) string { return s } // Dummy T function
 
-	tmpl = template.Must(template.New("main").Funcs(funcMap).ParseGlob("ui/templates/partials/datagrid/*.html"))
-	tmpl = template.Must(tmpl.ParseFiles("ui/templates/index.html"))
+	tmpl = template.Must(template.New("main").Funcs(funcMap).ParseGlob("pkg/datagrid/ui/templates/partials/datagrid/*.html"))
+	tmpl = template.Must(tmpl.ParseFiles("pkg/datagrid/ui/templates/index.html"))
 
 	// Datagrid Setup (Using Catalog from Config)
 	gridHandler, err := datagrid.NewHandlerFromCatalog(db, cfg.Catalog.Path, "en")
@@ -109,7 +109,7 @@ func main() {
 	}
 
 	// Routes
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("ui/static"))))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("pkg/datagrid/ui/static"))))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		hasJsonColumn := false

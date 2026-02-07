@@ -1,0 +1,59 @@
+{{define "cursor_wrapper"}}
+<div class="datagrid-wrapper">
+    <div class="resource-toolbar">
+        <div class="dg-breadcrumb-bar">
+            <div class="dg-bc-item">
+                <span>{{.Title}}</span>
+            </div>
+            <div class="dg-bc-separator"><i
+                    class="{{if .IsPhosphor}}ph ph-caret-right{{else}}fas fa-chevron-right{{end}}"></i></div>
+            <div class="dg-bc-item dg-bc-current">
+                <i class="{{if .IsPhosphor}}ph ph-database{{else}}fas fa-database{{end}}"></i>
+                <span>{{if eq .DBMode "refcursor"}}REFCURSOR MODE{{else}}CONNECTLESS MODE{{end}}</span>
+            </div>
+        </div>
+        <div class="datagrid-toolbar">
+            <div class="left-controls">
+                <div class="dg-badge" style="background: {{if eq .DBMode " refcursor"}}#e0f2fe{{else}}#fef3c7{{end}};
+                    color: {{if eq .DBMode "refcursor" }}#0369a1{{else}}#92400e{{end}}; padding: 4px 12px;
+                    border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
+                    {{if eq .DBMode "refcursor"}}SCROLLABLE CURSOR ACTIVE{{else}}STANDARD OFFSET/LIMIT{{end}}
+                </div>
+            </div>
+
+            <div class="right-controls">
+                <div class="pagination-controls"
+                    style="background: #f1f5f9; padding: 4px; border-radius: 8px; display: flex; gap: 4px;">
+                    <button class="dg-btn-icon" hx-get="{{.ListEndpoint}}?dir=FIRST" hx-target="#datagrid-container"
+                        title="FIRST">
+                        <i class="{{if .IsPhosphor}}ph ph-caret-double-left{{else}}fas fa-backward-step{{end}}"></i>
+                    </button>
+                    <button class="dg-btn-icon" hx-get="{{.ListEndpoint}}?dir=PRIOR" hx-target="#datagrid-container"
+                        title="PRIOR">
+                        <i class="{{if .IsPhosphor}}ph ph-caret-left{{else}}fas fa-chevron-left{{end}}"></i>
+                    </button>
+                    <div style="width: 1px; background: #e2e8f0; margin: 4px 0;"></div>
+                    <button class="dg-btn-icon" hx-get="{{.ListEndpoint}}?dir=NEXT" hx-target="#datagrid-container"
+                        title="NEXT">
+                        <i class="{{if .IsPhosphor}}ph ph-caret-right{{else}}fas fa-chevron-right{{end}}"></i>
+                    </button>
+                    <button class="dg-btn-icon" hx-get="{{.ListEndpoint}}?dir=LAST" hx-target="#datagrid-container"
+                        title="LAST">
+                        <i class="{{if .IsPhosphor}}ph ph-caret-double-right{{else}}fas fa-forward-step{{end}}"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-main-layout">
+        <div id="datagrid-container" class="dg-grid-container" hx-get="{{.ListEndpoint}}" hx-trigger="load"
+            hx-target="this">
+            <div class="loading-state">
+                <i class="{{if .IsPhosphor}}ph ph-circle-notched ph-spin{{else}}fas fa-spinner fa-spin{{end}}"></i>
+                Initializing Cursor...
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}

@@ -14,14 +14,13 @@ mkdir -p $DIST_DIR
 # Build
 echo "Building binary..."
 go mod tidy
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $DIST_DIR/testapp ./cmd/testapp/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $DIST_DIR/cursorapp ./cmd/cursorapp/main.go
 
 # Copy Assets
 echo "Copying assets..."
 cp config.yaml $DIST_DIR/
 cp -r ui $DIST_DIR/
-cp -r catalog $DIST_DIR/
-cp -r database $DIST_DIR/
+cp -r pkg/datagrid/ui "$DIST_DIR/pkg/datagrid/"
 cp -r scripts $DIST_DIR/
 cp -r deploy $DIST_DIR/
 

@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,6 +34,9 @@ type CatalogObject struct {
 type Catalog struct {
 	Objects  []CatalogObject `json:"objects"`
 	Datagrid struct {
+		Defaults struct {
+			PageSize []int `json:"page_size"`
+		} `json:"defaults"`
 		Columns map[string]CatalogColumn `json:"columns"`
 	} `json:"datagrid"`
 }
@@ -95,61 +99,10 @@ func main() {
 		"isConnectless": func() bool { return dbMode == cursorpool.ModeConnectless },
 	}
 
-	tmpl = template.Must(template.New("ui").Funcs(funcMap).Parse(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>CursorPool UI Test (Catalog Mode)</title>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; background: white; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; white-space: nowrap; }
-        .controls { margin-bottom: 20px; }
-        button { padding: 10px 20px; cursor: pointer; }
-        .icon { margin-right: 5px; color: #555; }
-    </style>
-</head>
-<body>
-    <h1>Catalog-Driven CursorPool (Mode: {{.Mode}})</h1>
-    <div class="controls">
-        <button hx-get="/data?page=FIRST" hx-target="#table-body">FIRST</button>
-        <button hx-get="/data?page=PRIOR" hx-target="#table-body">PRIOR</button>
-        <button hx-get="/data?page=NEXT" hx-target="#table-body">NEXT</button>
-        <button hx-get="/data?page=LAST" hx-target="#table-body">LAST</button>
-    </div>
-    <div id="table-container">
-        <table>
-            <thead>
-                <tr>
-                    {{range .DisplayCols}}
-                    <th>{{with getIcon .}}<i class="fa {{.}} icon"></i>{{end}}{{getLabel .}}</th>
-                    {{end}}
-                </tr>
-            </thead>
-            <tbody id="table-body" hx-get="/data?page=FIRST" hx-trigger="load">
-            </tbody>
-        </table>
-    </div>
-</body>
-</html>
-`))
+	tmpl = template.Must(template.New("main").Funcs(funcMap).ParseGlob("pkg/datagrid/ui/templates/partials/datagrid/*.html"))
+	tmpl = template.Must(tmpl.ParseFiles("pkg/datagrid/ui/templates/index.html"))
 
-	tmpl = template.Must(tmpl.New("table").Funcs(funcMap).Parse(`
-{{$cols := .Cols}}
-{{range .Rows}}
-<tr>
-    {{$row := .}}
-    {{range $cols}}
-    <td>{{index $row .}}</td>
-    {{end}}
-</tr>
-{{else}}
-<tr><td colspan="10">No records found</td></tr>
-{{end}}
-`))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("pkg/datagrid/ui/static"))))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		displayCols := []string{}
@@ -161,6 +114,7 @@ func main() {
 		tmpl.ExecuteTemplate(w, "ui", map[string]interface{}{
 			"Mode":        dbMode,
 			"DisplayCols": displayCols,
+			"PageSizes":   catalog.Datagrid.Defaults.PageSize,
 		})
 	})
 
@@ -168,6 +122,12 @@ func main() {
 		direction := r.URL.Query().Get("page")
 		if direction == "" {
 			direction = "NEXT"
+		}
+
+		limitStr := r.URL.Query().Get("limit")
+		limit := 10
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
 		}
 
 		sid := "catalog-ui-test"
@@ -192,9 +152,9 @@ func main() {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			results, err = pool.FetchPage(context.Background(), sid, direction, 10)
+			results, err = pool.FetchPage(context.Background(), sid, direction, limit)
 		} else {
-			results, err = pool.QueryDirect(context.Background(), query+" LIMIT 10")
+			results, err = pool.QueryDirect(context.Background(), fmt.Sprintf("%s LIMIT %d", query, limit))
 		}
 
 		if err != nil {

@@ -1,6 +1,6 @@
 application:
   name: "datagrid"
-  version: "1.4.0"
+  version: "1.5.1"
   environment: "development"
   log_level: "debug"
   author: "Gabor Nemet"
@@ -19,4 +19,9 @@ database:
     default: true
 
 catalog:
-  path: "catalog/personnel.json"
+  path: "internal/data/catalog/personnel.json"
+
+cursorpool:
+  max_connections: 50
+  idle_timeout: "5m"
+  abs_timeout: "1h"

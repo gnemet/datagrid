@@ -103,9 +103,20 @@ function updateSortIcons() {
         const sortIdx = currentSort.findIndex(s => s.field === field);
         if (sortIdx !== -1) {
             const s = currentSort[sortIdx];
-            const iconClass = s.dir === 'ASC' ? 'fa-sort-up' : 'fa-sort-down';
+            const iconLib = $('meta[name="icon-library"]').attr('content') || 'FontAwesome';
+            let iconClass;
+            let libClass;
+
+            if (iconLib === 'Phosphor') {
+                libClass = 'ph';
+                iconClass = s.dir === 'ASC' ? 'ph-caret-up' : 'ph-caret-down';
+            } else {
+                libClass = 'fas';
+                iconClass = s.dir === 'ASC' ? 'fa-sort-up' : 'fa-sort-down';
+            }
+
             let html = `<span class="sort-indicator">
-                            <i class="fas ${iconClass}"></i>`;
+                            <i class="${libClass} ${iconClass}"></i>`;
             if (currentSort.length > 1) {
                 html += `<span class="sort-rank-sub">${sortIdx + 1}</span>`;
             }
@@ -297,16 +308,29 @@ function initEvents() {
                 $('#datagrid-detail-sidebar').toggleClass('collapsed');
                 const isRCollapsed = $('#datagrid-detail-sidebar').hasClass('collapsed');
                 // Update icon if present
-                const $rIcon = $(this).find('i.fa-angle-left, i.fa-angle-right');
+                const iconLibSidebar = ($('meta[name="icon-library"]').attr('content') || 'FontAwesome').toLowerCase();
+                const $rIcon = $(this).find('i');
                 if ($rIcon.length) {
-                    $rIcon.attr('class', isRCollapsed ? 'fas fa-angle-left' : 'fas fa-angle-right');
+                    if (iconLibSidebar.includes('phosphor')) {
+                        $rIcon.attr('class', isRCollapsed ? 'ph ph-caret-left' : 'ph ph-caret-right');
+                    } else {
+                        $rIcon.attr('class', isRCollapsed ? 'fas fa-angle-left' : 'fas fa-angle-right');
+                    }
                 }
                 break;
             case 'switch-theme':
                 const theme = $('html').attr('data-theme') === 'dark' ? 'light' : 'dark';
                 $('html').attr('data-theme', theme);
                 localStorage.setItem('dg_theme', theme);
-                $(this).find('i').toggleClass('fa-moon fa-sun');
+
+                const iconLib = $('meta[name="icon-library"]').attr('content') || 'FontAwesome';
+                const $icon = $(this).find('i');
+
+                if (iconLib.toLowerCase().includes('phosphor')) {
+                    $icon.attr('class', theme === 'dark' ? 'ph ph-sun' : 'ph ph-moon');
+                } else {
+                    $icon.attr('class', theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon');
+                }
                 break;
             case 'switch-lang':
                 const langs = $(this).data('langs') || ['en'];

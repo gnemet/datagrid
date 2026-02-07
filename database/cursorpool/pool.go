@@ -37,18 +37,27 @@ type CursorPool struct {
 	mu          sync.Mutex
 	idleTimeout time.Duration
 	absTimeout  time.Duration
+	maxCursors  int
 	cleanupStop chan struct{}
 }
 
-// NewCursorPool creates and initializes a new CursorPool
+// NewCursorPool creates and initializes a new CursorPool with tuning parameters
 func NewCursorPool(connStr string, maxConns int, idleTimeout, absTimeout time.Duration) (*CursorPool, error) {
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
+	// Dynamic tuning of the underlying pool
 	db.SetMaxOpenConns(maxConns)
-	if err := db.Ping(); err != nil {
+	db.SetMaxIdleConns(maxConns / 2)
+	db.SetConnMaxLifetime(absTimeout)
+	db.SetConnMaxIdleTime(idleTimeout)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
@@ -57,6 +66,7 @@ func NewCursorPool(connStr string, maxConns int, idleTimeout, absTimeout time.Du
 		cursors:     make(map[string]*CursorState),
 		idleTimeout: idleTimeout,
 		absTimeout:  absTimeout,
+		maxCursors:  maxConns, // Ties cursors to connections
 		cleanupStop: make(chan struct{}),
 	}
 
@@ -122,6 +132,11 @@ func (p *CursorPool) InitializeCursor(ctx context.Context, sid, query string) (*
 		return state, nil
 	}
 
+	// Explicit limit check
+	if len(p.cursors) >= p.maxCursors && p.maxCursors > 0 {
+		return nil, fmt.Errorf("cursor pool capacity reached (max %d)", p.maxCursors)
+	}
+
 	conn, err := p.db.Conn(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connection: %w", err)
@@ -155,8 +170,27 @@ func (p *CursorPool) InitializeCursor(ctx context.Context, sid, query string) (*
 	return state, nil
 }
 
-// FetchNext fetches rows from an active cursor
-func (p *CursorPool) FetchNext(ctx context.Context, sid string, count int) ([]map[string]interface{}, error) {
+// BuildFetchQuery constructs the SQL command for cursor pagination based on direction and page size.
+func (p *CursorPool) BuildFetchQuery(cursorName string, pageSize int, direction string) string {
+	q := "\"" + cursorName + "\""
+	switch direction {
+	case "NEXT":
+		return fmt.Sprintf("FETCH FORWARD %d FROM %s;", pageSize, q)
+	case "PRIOR":
+		return fmt.Sprintf("MOVE RELATIVE -%d FROM %s;\nFETCH FORWARD %d FROM %s;", 2*pageSize, q, pageSize, q)
+	case "LAST":
+		return fmt.Sprintf("MOVE LAST FROM %s;\nMOVE RELATIVE -%d FROM %s;\nFETCH FORWARD %d FROM %s;\nMOVE LAST FROM %s;", q, pageSize, q, pageSize, q, q)
+	case "BACKWARD":
+		return fmt.Sprintf("MOVE RELATIVE -%d FROM %s;", pageSize, q)
+	case "FIRST":
+		return fmt.Sprintf("MOVE ABSOLUTE 0 FROM %s;\nFETCH FORWARD %d FROM %s;", q, pageSize, q)
+	default:
+		return fmt.Sprintf("FETCH FORWARD %d FROM %s;", pageSize, q)
+	}
+}
+
+// FetchPage fetches rows from an active cursor in a specific direction
+func (p *CursorPool) FetchPage(ctx context.Context, sid, direction string, count int) ([]map[string]interface{}, error) {
 	p.mu.Lock()
 	state, ok := p.cursors[sid]
 	p.mu.Unlock()
@@ -169,7 +203,7 @@ func (p *CursorPool) FetchNext(ctx context.Context, sid string, count int) ([]ma
 	defer state.Unlock()
 	state.LastUsed = time.Now()
 
-	fetchSQL := fmt.Sprintf("FETCH FORWARD %d FROM %s", count, state.CursorName)
+	fetchSQL := p.BuildFetchQuery(state.CursorName, count, direction)
 	rows, err := state.Tx.QueryContext(ctx, fetchSQL)
 	if err != nil {
 		return nil, fmt.Errorf("fetch failed: %w", err)

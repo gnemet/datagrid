@@ -17,12 +17,44 @@
         "icon": {
             "type": "string"
         },
+        "css_class": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
         "datagrid": {
             "type": "object",
             "required": [
                 "columns"
             ],
             "properties": {
+                "iconStyleLibrary": {
+                    "type": "string"
+                },
+                "operations": {
+                    "type": "object",
+                    "properties": {
+                        "add": {
+                            "type": "boolean"
+                        },
+                        "edit": {
+                            "type": "boolean"
+                        },
+                        "delete": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "lovs": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "common.schema.json#/definitions/lov_item"
+                        }
+                    }
+                },
                 "defaults": {
                     "type": "object",
                     "properties": {
@@ -61,6 +93,11 @@
                                 "type": "string"
                             },
                             "description": "Cyclic row styles (e.g. alternating background colors)"
+                        },
+                        "filters": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "description": "Default filter values"
                         }
                     }
                 },
@@ -73,6 +110,9 @@
                                 "type": "boolean"
                             },
                             "css": {
+                                "type": "string"
+                            },
+                            "display": {
                                 "type": "string"
                             },
                             "labels": {

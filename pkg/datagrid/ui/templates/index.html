@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="icon-library" content="{{.IconStyleLibrary}}">
+    <title>{{.Title}}</title>
+    {{if eq $.IconStyleLibrary "Phosphor"}}
+    <link rel="stylesheet" href="/static/vendor/phosphor/regular/style.css">
+    {{else}}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {{end}}
+    <link rel="stylesheet" href="/static/css/datagrid.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script>
+        (function () {
+            const theme = localStorage.getItem('dg_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+</head>
+
+<body class="dg-page-body">
+    <header class="dg-main-header">
+        <div class="dg-header-content">
+            <div class="dg-brand-group">
+                <span class="dg-brand-name">{{.App.Name}}</span>
+                <span class="dg-header-separator">|</span>
+                <span class="dg-page-title">{{.Title}}</span>
+            </div>
+
+            <div class="dg-header-actions">
+                <button class="dg-header-btn loop-selector" data-action="switch-lang" data-langs='{{.LangsJSON}}'
+                    data-current="{{.CurrentLang}}" title="Switch Language">
+                    <i class="{{if eq $.IconStyleLibrary "Phosphor"}}ph ph-globe{{else}}fas fa-globe{{end}}"></i>
+                </button>
+                <button class="dg-header-btn loop-selector" data-action="switch-theme" title="Toggle Theme">
+                    <i class="{{if eq $.IconStyleLibrary "Phosphor"}}ph ph-moon{{else}}fas fa-moon{{end}}"></i>
+                </button>
+                <button class="dg-header-btn" title="User Profile">
+                    <i class="{{if eq $.IconStyleLibrary "Phosphor"}}ph ph-user-circle{{else}}fas
+                        fa-user-circle{{end}}"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="dg-main-content">
+        <div class="dg-card-container">
+            {{template "datagrid_wrapper" .}}
+        </div>
+    </main>
+
+    <footer class="dg-main-footer">
+        <div class="dg-footer-content">
+            <div class="dg-footer-left">
+                <span class="dg-footer-item">© 2026 {{.App.Author}}</span>
+            </div>
+            <div class="dg-footer-right">
+                <span class="dg-footer-version">v{{.App.Version}}</span>
+                <span class="dg-footer-separator">•</span>
+                <span class="dg-footer-engine">Antigravity Engine</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/js/datagrid.js"></script>
+    <script>
+        // Set context for settings
+        window.datagridResource = 'personnel_demo';
+    </script>
+</body>
+
+</html>

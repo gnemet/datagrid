@@ -52,12 +52,13 @@ type Catalog struct {
 }
 
 type DatagridConfig struct {
-	Defaults   DatagridDefaults             `json:"defaults"`
-	LOVs       map[string][]LOVItem         `json:"lovs"`
-	Operations Operations                   `json:"operations"`
-	Filters    map[string]FilterDef         `json:"filters"`
-	Columns    map[string]DatagridColumnDef `json:"columns"`
-	Searchable SearchableConfig             `json:"searchable"`
+	Defaults         DatagridDefaults             `json:"defaults"`
+	LOVs             map[string][]LOVItem         `json:"lovs"`
+	Operations       Operations                   `json:"operations"`
+	Filters          map[string]FilterDef         `json:"filters"`
+	Columns          map[string]DatagridColumnDef `json:"columns"`
+	Searchable       SearchableConfig             `json:"searchable"`
+	IconStyleLibrary string                       `json:"iconStyleLibrary,omitempty"`
 }
 
 type SearchableConfig struct {
@@ -120,23 +121,26 @@ type RequestParams struct {
 
 // TableResult contains data to be rendered by the partial template
 type TableResult struct {
-	Records    []map[string]interface{}
-	TotalCount int
-	Offset     int
-	Limit      int
-	UIColumns  []UIColumn
-	Config     DatagridConfig
-	Lang       string // For localization in templates
+	Records          []map[string]interface{}
+	TotalCount       int
+	Offset           int
+	Limit            int
+	UIColumns        []UIColumn
+	Config           DatagridConfig
+	Lang             string // For localization in templates
+	IconStyleLibrary string
+	IsPhosphor       bool
 }
 
 // Handler handles the grid data requests
 type Handler struct {
-	DB        *sql.DB
-	TableName string
-	Columns   []UIColumn
-	Config    DatagridConfig
-	Catalog   Catalog
-	Lang      string
+	DB               *sql.DB
+	TableName        string
+	Columns          []UIColumn
+	Config           DatagridConfig
+	Catalog          Catalog
+	Lang             string
+	IconStyleLibrary string
 }
 
 func NewHandler(db *sql.DB, tableName string, cols []UIColumn, cfg DatagridConfig) *Handler {
@@ -345,13 +349,19 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		})
 	}
 
+	iconStyle := strings.TrimSpace(cat.Datagrid.IconStyleLibrary)
+	if iconStyle == "" {
+		iconStyle = "FontAwesome"
+	}
+
 	return &Handler{
-		DB:        db,
-		TableName: obj.Name,
-		Columns:   uiCols,
-		Config:    cat.Datagrid,
-		Catalog:   cat,
-		Lang:      lang,
+		DB:               db,
+		TableName:        obj.Name,
+		Columns:          uiCols,
+		Config:           cat.Datagrid,
+		Catalog:          cat,
+		Lang:             lang,
+		IconStyleLibrary: iconStyle,
 	}, nil
 }
 
@@ -543,15 +553,18 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 		return nil, err
 	}
 
-	return &TableResult{
-		Records:    records,
-		TotalCount: total,
-		Offset:     p.Offset,
-		Limit:      p.Limit,
-		UIColumns:  h.Columns,
-		Config:     h.Config,
-		Lang:       h.Lang,
-	}, nil
+	res := &TableResult{
+		Records:          records,
+		TotalCount:       total,
+		Offset:           p.Offset,
+		Limit:            p.Limit,
+		UIColumns:        h.Columns,
+		Config:           h.Config,
+		Lang:             h.Lang,
+		IconStyleLibrary: h.IconStyleLibrary,
+	}
+	fmt.Printf("DEBUG: FetchData IconStyleLibrary='%s' (len=%d)\n", res.IconStyleLibrary, len(res.IconStyleLibrary))
+	return res, nil
 }
 
 func (h *Handler) buildWhere(p RequestParams) (string, []interface{}) {
@@ -743,6 +756,7 @@ func TemplateFuncs() template.FuncMap {
 		"renderRow": RenderRow,
 		"replace":   strings.ReplaceAll,
 		"contains":  strings.Contains,
+		"to_lower":  strings.ToLower,
 	}
 }
 
