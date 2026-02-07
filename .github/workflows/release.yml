@@ -60,12 +60,11 @@ jobs:
           
           # Cleanup old releases/tags (Single Release Policy)
           echo "Checking for existing releases..."
-          # Fetch releases, ignoring errors if none found
-          RELEASES=$(gh release list --limit 100 2>/dev/null | cut -f 1 || echo "")
+          TAGS=$(gh release list --limit 100 --json tagName --jq '.[].tagName' 2>/dev/null || echo "")
           
-          if [[ -n "$RELEASES" ]]; then
-            echo "Found releases to clean up..."
-            echo "$RELEASES" | xargs -I {} gh release delete {} --yes --cleanup-tag || true
+          if [[ -n "$TAGS" ]]; then
+            echo "Found tags to clean up: $TAGS"
+            echo "$TAGS" | xargs -I {} gh release delete {} --yes --cleanup-tag || true
           else
             echo "No releases found to clean up."
           fi
@@ -85,7 +84,7 @@ jobs:
 
   deploy:
     needs: release
-    if: needs.release.outputs.version_changed == 'true'
+    if: needs.release.outputs.version_changed == 'true' && vars.DEPLOY_HOST != ''
     runs-on: ubuntu-latest
     steps:
       - name: Download Artifact
