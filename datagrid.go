@@ -350,6 +350,7 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		TableName: obj.Name,
 		Columns:   uiCols,
 		Config:    cat.Datagrid,
+		Catalog:   cat,
 		Lang:      lang,
 	}, nil
 }

@@ -1,0 +1,123 @@
+name: Auto-Release-Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'config.yaml'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      version_changed: ${{ steps.version_check.outputs.version_changed }}
+      version: ${{ steps.version_check.outputs.version }}
+      tag: ${{ steps.version_check.outputs.tag }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Version Changes
+        id: version_check
+        run: |
+          NEW_VER=$(grep "version:" config.yaml | sed 's/.*: "\(.*\)"/\1/')
+          OLD_VER=$(git show HEAD~1:config.yaml | grep "version:" | sed 's/.*: "\(.*\)"/\1/')
+          
+          if [ "$NEW_VER" != "$OLD_VER" ]; then
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+            echo "version=$NEW_VER" >> $GITHUB_OUTPUT
+            echo "tag=v$NEW_VER" >> $GITHUB_OUTPUT
+          else
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Go
+        if: steps.version_check.outputs.version_changed == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Build & Pack
+        if: steps.version_check.outputs.version_changed == 'true'
+        run: |
+          chmod +x scripts/pack.sh
+          ./scripts/pack.sh
+
+      - name: Create Release
+        if: steps.version_check.outputs.version_changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME=${{ steps.version_check.outputs.tag }}
+          VER=${{ steps.version_check.outputs.version }}
+          
+          # Cleanup old releases/tags (Single Release Policy)
+          echo "Cleaning up old releases..."
+          gh release list --limit 100 | cut -f 1 | xargs -I {} gh release delete {} --yes --cleanup-tag || true
+          
+          gh release create "$TAG_NAME" \
+            "dist/datagrid-$VER.tar.gz" \
+            --title "Datagrid $TAG_NAME" \
+            --generate-notes
+
+      - name: Save Pack for Deployment
+        if: steps.version_check.outputs.version_changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-pack
+          path: dist/*.tar.gz
+
+  deploy:
+    needs: release
+    if: needs.release.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-pack
+          path: .
+
+      - name: Transfer to Server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "*.tar.gz"
+          target: ${{ secrets.DEPLOY_PATH }}
+
+      - name: Remote Install & Restart
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            PKG="datagrid-${{ needs.release.outputs.version }}.tar.gz"
+            DIR="datagrid-${{ needs.release.outputs.version }}"
+            
+            echo "Extracting $PKG..."
+            tar -xzvf $PKG
+            
+            echo "Running installation script..."
+            cd $DIR
+            sudo ./deploy/install.sh
+            
+            echo "Restarting Datagrid service..."
+            sudo systemctl restart datagrid || sudo systemctl start datagrid
+            
+            # Cleanup old deployment directories
+            echo "Cleaning up old deployments..."
+            cd ..
+            ls -dt datagrid-* | tail -n +2 | xargs -r rm -rf
+            
+            echo "Deployment of version ${{ needs.release.outputs.version }} successful!"

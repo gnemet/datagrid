@@ -67,17 +67,7 @@
     --dg-input-border: #404b5c;
 }
 
-body {
-    margin: 0;
-    padding: 0;
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    font-family: var(--dg-font);
-    -webkit-font-smoothing: antialiased;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
+/* Body style removed to prevent host conflict */
 
 .dg-main-header {
     background: var(--bg-primary);

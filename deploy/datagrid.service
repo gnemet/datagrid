@@ -1,0 +1,15 @@
+[Unit]
+Description=Datagrid Test Service
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=datagrid
+WorkingDirectory=/opt/datagrid
+ExecStart=/opt/datagrid/testapp
+Restart=always
+RestartSec=5
+EnvironmentFile=/opt/datagrid/.env
+
+[Install]
+WantedBy=multi-user.target
