@@ -5,16 +5,17 @@
             <div class="dg-bc-item">
                 <span>{{.Title}}</span>
             </div>
-            <div class="dg-bc-separator"><i class="fas fa-chevron-right"></i></div>
+            <div class="dg-bc-separator"><i
+                    class="{{if .IsPhosphor}}ph ph-caret-right{{else}}fas fa-chevron-right{{end}}"></i></div>
             <div class="dg-bc-item dg-bc-current">
-                {{if .Icon}}<i class="fas {{.Icon}}"></i>{{end}}
+                {{if .Icon}}<i class="{{if .IsPhosphor}}ph {{.Icon}}{{else}}fas {{.Icon}}{{end}}"></i>{{end}}
                 <span>{{.Title}}</span>
             </div>
         </div>
         <div class="datagrid-toolbar">
             <div class="left-controls">
                 <div class="search-wrapper">
-                    <i class="fas fa-search"></i>
+                    <i class="{{if .IsPhosphor}}ph ph-magnifying-glass{{else}}fas fa-search{{end}}"></i>
                     <input type="text" name="search" class="search-input" placeholder="Search..."
                         hx-get="{{.ListEndpoint}}" hx-target="#datagrid-container"
                         hx-trigger="keyup changed delay:300ms, search"
@@ -42,24 +43,24 @@
             <div class="right-controls column-chooser-wrapper">
                 {{if .HasJSONColumn}}
                 <button class="dg-btn-icon" id="expand-keys-btn" title="Expand JSON Keys">
-                    <i class="fas fa-expand"></i>
+                    <i class="{{if .IsPhosphor}}ph ph-corners-out{{else}}fas fa-expand{{end}}"></i>
                 </button>
                 {{end}}
                 <button class="dg-btn-icon" id="toggle-sidebar-btn" title="Toggle Detail Panel">
-                    <i class="fas fa-id-card"></i>
+                    <i class="{{if .IsPhosphor}}ph ph-identification-card{{else}}fas fa-id-card{{end}}"></i>
                 </button>
                 <button class="dg-btn-icon" id="column-chooser-btn" title="Choose Columns">
-                    <i class="fas fa-columns"></i>
+                    <i class="{{if .IsPhosphor}}ph ph-columns{{else}}fas fa-columns{{end}}"></i>
                 </button>
                 <div id="column-chooser-dropdown" class="column-chooser-dropdown hidden"></div>
 
                 <div class="pagination-controls">
                     <button class="dg-btn-icon" id="prev-page-btn" title="Previous Page">
-                        <i class="fas fa-chevron-left"></i>
+                        <i class="{{if .IsPhosphor}}ph ph-caret-left{{else}}fas fa-chevron-left{{end}}"></i>
                     </button>
                     <span class="page-info" id="page-size-btn" title="Change Page Size">{{.Limit}}</span>
                     <button class="dg-btn-icon" id="next-page-btn" title="Next Page">
-                        <i class="fas fa-chevron-right"></i>
+                        <i class="{{if .IsPhosphor}}ph ph-caret-right{{else}}fas fa-chevron-right{{end}}"></i>
                     </button>
                 </div>
             </div>
@@ -76,21 +77,23 @@
         <div id="datagrid-container" class="dg-grid-container" hx-get="{{.ListEndpoint}}" hx-trigger="load"
             hx-include=".search-input, #datagrid-filter-form, .dg-select">
             <div class="loading-state">
-                <i class="fas fa-spinner fa-spin"></i> Loading...
+                <i class="{{if .IsPhosphor}}ph ph-circle-notched ph-spin{{else}}fas fa-spinner fa-spin{{end}}"></i>
+                Loading...
             </div>
         </div>
 
         <!-- Right Sidebar for Record Detail -->
         <aside id="datagrid-detail-sidebar" class="sidebar-detail sidebar-right-panel collapsed">
             <div class="sidebar-header">
-                <h3><i class="fas fa-id-card"></i> Record Detail</h3>
+                <h3><i class="{{if .IsPhosphor}}ph ph-identification-card{{else}}fas fa-id-card{{end}}"></i> Record
+                    Detail</h3>
                 <button class="dg-btn-icon" data-action="toggle-sidebar" title="Collapse">
-                    <i class="fas fa-angle-right"></i>
+                    <i class="{{if .IsPhosphor}}ph ph-caret-right{{else}}fas fa-angle-right{{end}}"></i>
                 </button>
             </div>
             <div class="sidebar-content" id="datagrid-detail-content">
                 <div class="dg-empty-state">
-                    <i class="fas fa-mouse-pointer"></i>
+                    <i class="{{if .IsPhosphor}}ph ph-cursor-click{{else}}fas fa-mouse-pointer{{end}}"></i>
                     <p>Select a record to view details</p>
                 </div>
             </div>
@@ -101,7 +104,7 @@
 <!-- Context Menu -->
 <div id="meta-context-menu" class="context-menu hidden">
     <div class="context-menu-item" id="ctx-copy-id">
-        <i class="fas fa-copy"></i> Copy ID
+        <i class="{{if .IsPhosphor}}ph ph-copy{{else}}fas fa-copy{{end}}"></i> Copy ID
     </div>
 </div>
 {{end}}

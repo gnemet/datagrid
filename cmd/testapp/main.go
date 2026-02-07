@@ -126,19 +126,22 @@ func main() {
 				"Version": cfg.Application.Version,
 				"Author":  cfg.Application.Author,
 			},
-			"Title":         "Personnel Records", // Specific page title
-			"ListEndpoint":  "/list",
-			"Limit":         10,
-			"Offset":        0,
-			"UIColumns":     gridHandler.Columns,
-			"LangsJSON":     `["en", "hu"]`,
-			"CurrentLang":   "en",
-			"HasJSONColumn": hasJsonColumn,
+			"Title":            "Personnel Records", // Specific page title
+			"ListEndpoint":     "/list",
+			"Limit":            10,
+			"Offset":           0,
+			"UIColumns":        gridHandler.Columns,
+			"LangsJSON":        `["en", "hu"]`,
+			"CurrentLang":      "en",
+			"IconStyleLibrary": strings.TrimSpace(gridHandler.IconStyleLibrary),
+			"IsPhosphor":       strings.Contains(strings.ToLower(gridHandler.IconStyleLibrary), "phosphor"),
+			"HasJSONColumn":    hasJsonColumn,
 		}
 		tmpl.ExecuteTemplate(w, "index.html", data)
 	})
 
 	http.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
+		gridHandler.ListEndpoint = "/list"
 		params := gridHandler.ParseParams(r)
 		result, err := gridHandler.FetchData(params)
 		if err != nil {

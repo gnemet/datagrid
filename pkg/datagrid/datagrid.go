@@ -130,6 +130,9 @@ type TableResult struct {
 	Lang             string // For localization in templates
 	IconStyleLibrary string
 	IsPhosphor       bool
+	Title            string // Header Title
+	ListEndpoint     string // HX-Get Endpoint
+	HasJSONColumn    bool   // For Expand Keys button
 }
 
 // Handler handles the grid data requests
@@ -141,6 +144,7 @@ type Handler struct {
 	Catalog          Catalog
 	Lang             string
 	IconStyleLibrary string
+	ListEndpoint     string // Default endpoint for HTMX updates
 }
 
 func NewHandler(db *sql.DB, tableName string, cols []UIColumn, cfg DatagridConfig) *Handler {
@@ -580,6 +584,16 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 		Lang:             h.Lang,
 		IconStyleLibrary: h.IconStyleLibrary,
 		IsPhosphor:       h.IconStyleLibrary == "Phosphor",
+		Title:            h.Catalog.Title,
+		ListEndpoint:     h.ListEndpoint,
+	}
+
+	// Detect if any column is JSON for UI buttons
+	for _, col := range h.Columns {
+		if strings.Contains(strings.ToLower(col.Type), "json") {
+			res.HasJSONColumn = true
+			break
+		}
 	}
 	fmt.Printf("DEBUG: FetchData IconStyleLibrary='%s' (len=%d)\n", res.IconStyleLibrary, len(res.IconStyleLibrary))
 	return res, nil

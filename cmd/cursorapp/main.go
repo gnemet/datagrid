@@ -166,6 +166,7 @@ func main() {
 	})
 
 	http.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
+		handler.ListEndpoint = "/list"
 		sid := "cursor-app-session"
 
 		// Map datagrid's offset/limit search params if needed
