@@ -3,6 +3,7 @@ module github.com/gnemet/datagrid
 go 1.25.6
 
 require (
+	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.11.1
 	github.com/xeipuuv/gojsonschema v1.2.0
