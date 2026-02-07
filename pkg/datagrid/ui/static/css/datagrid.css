@@ -939,3 +939,36 @@
         width: 100%;
     }
 }
+
+/* Badge System */
+.dg-badge {
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.dg-badge-blue {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.dg-badge-amber {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Pagination UI Styles */
+.dg-pagination-box {
+    background: var(--bg-secondary);
+    padding: 4px;
+    border-radius: 8px;
+    display: flex;
+    gap: 4px;
+}
+
+.dg-separator-v {
+    width: 1px;
+    background: var(--dg-border);
+    margin: 4px 0;
+}

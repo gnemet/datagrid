@@ -14,16 +14,13 @@
         </div>
         <div class="datagrid-toolbar">
             <div class="left-controls">
-                <div class="dg-badge" style="background: {{if eq .DBMode " refcursor"}}#e0f2fe{{else}}#fef3c7{{end}};
-                    color: {{if eq .DBMode "refcursor" }}#0369a1{{else}}#92400e{{end}}; padding: 4px 12px;
-                    border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
+                <div class="dg-badge {{if eq .DBMode " refcursor"}}dg-badge-blue{{else}}dg-badge-amber{{end}}">
                     {{if eq .DBMode "refcursor"}}SCROLLABLE CURSOR ACTIVE{{else}}STANDARD OFFSET/LIMIT{{end}}
                 </div>
             </div>
 
             <div class="right-controls">
-                <div class="pagination-controls"
-                    style="background: #f1f5f9; padding: 4px; border-radius: 8px; display: flex; gap: 4px;">
+                <div class="dg-pagination-box">
                     <button class="dg-btn-icon" hx-get="{{.ListEndpoint}}?dir=FIRST" hx-target="#datagrid-container"
                         title="FIRST">
                         <i class="{{if .IsPhosphor}}ph ph-caret-double-left{{else}}fas fa-backward-step{{end}}"></i>
@@ -32,7 +29,7 @@
                         title="PRIOR">
                         <i class="{{if .IsPhosphor}}ph ph-caret-left{{else}}fas fa-chevron-left{{end}}"></i>
                     </button>
-                    <div style="width: 1px; background: #e2e8f0; margin: 4px 0;"></div>
+                    <div class="dg-separator-v"></div>
                     <button class="dg-btn-icon" hx-get="{{.ListEndpoint}}?dir=NEXT" hx-target="#datagrid-container"
                         title="NEXT">
                         <i class="{{if .IsPhosphor}}ph ph-caret-right{{else}}fas fa-chevron-right{{end}}"></i>

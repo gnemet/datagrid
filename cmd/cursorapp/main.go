@@ -218,11 +218,12 @@ func main() {
 			offset := 0
 			// In a real app, this would be in URL or a more robust session
 			// For this test, we'll use a hacky global or just demo FIRST/NEXT
-			if direction == "NEXT" {
+			switch direction {
+			case "NEXT":
 				offset = 10
-			} else if direction == "PRIOR" {
+			case "PRIOR":
 				offset = 0
-			} else if direction == "LAST" {
+			case "LAST":
 				offset = 20 // Assuming small dataset for demo
 			}
 
