@@ -60,12 +60,17 @@ jobs:
           
           # Cleanup old releases/tags (Single Release Policy)
           echo "Checking for existing releases..."
-          RELEASES=$(gh release list --limit 100 | cut -f 1)
-          if [ ! -z "$RELEASES" ]; then
-            echo "Cleaning up old releases..."
-            echo "$RELEASES" | xargs -I {} gh release delete {} --yes --cleanup-tag
+          # Fetch releases, ignoring errors if none found
+          RELEASES=$(gh release list --limit 100 2>/dev/null | cut -f 1 || echo "")
+          
+          if [[ -n "$RELEASES" ]]; then
+            echo "Found releases to clean up..."
+            echo "$RELEASES" | xargs -I {} gh release delete {} --yes --cleanup-tag || true
+          else
+            echo "No releases found to clean up."
           fi
           
+          echo "Creating new release $TAG_NAME..."
           gh release create "$TAG_NAME" \
             "dist/datagrid-$VER.tar.gz" \
             --title "Datagrid $TAG_NAME" \

@@ -3,7 +3,8 @@ bin/
 testapp
 
 # Env
-.env
+.env*
+!.env*.gpg
 
 # Go
 vendor/
