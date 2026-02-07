@@ -335,6 +335,22 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 			displayPattern = override.Display
 		}
 
+		// Hardcode Elimination: Automatically add generic classes based on metadata
+		if isNumericType(col.Type) {
+			if cssClass != "" {
+				cssClass = "col-number " + cssClass
+			} else {
+				cssClass = "col-number"
+			}
+		}
+		if col.PrimaryKey || strings.ToLower(col.Name) == "id" {
+			if cssClass != "" {
+				cssClass = "col-id " + cssClass
+			} else {
+				cssClass = "col-id"
+			}
+		}
+
 		uiCols = append(uiCols, UIColumn{
 			Field:    col.Name,
 			Label:    label,
@@ -770,4 +786,10 @@ func RenderRow(pattern string, row map[string]interface{}) template.HTML {
 		result = strings.ReplaceAll(result, placeholder, valStr)
 	}
 	return template.HTML(result)
+}
+
+func isNumericType(t string) bool {
+	t = strings.ToLower(t)
+	return strings.Contains(t, "int") || strings.Contains(t, "num") || strings.Contains(t, "float") ||
+		strings.Contains(t, "double") || strings.Contains(t, "decimal") || strings.Contains(t, "money")
 }

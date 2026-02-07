@@ -457,9 +457,6 @@
 }
 
 /* Numeric alignment and monospacing */
-.datagrid-table td[data-field="id"],
-.datagrid-table td[data-field="salary"],
-.datagrid-table td[data-field="earnings"],
 .col-number,
 .col-id {
     font-family: var(--dg-font-mono) !important;
