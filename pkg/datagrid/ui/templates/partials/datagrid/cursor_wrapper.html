@@ -14,7 +14,7 @@
         </div>
         <div class="datagrid-toolbar">
             <div class="left-controls">
-                <div class="dg-badge {{if eq .DBMode " refcursor"}}dg-badge-blue{{else}}dg-badge-amber{{end}}">
+                <div class='dg-badge {{if eq .DBMode "refcursor"}}dg-badge-blue{{else}}dg-badge-amber{{end}}'>
                     {{if eq .DBMode "refcursor"}}SCROLLABLE CURSOR ACTIVE{{else}}STANDARD OFFSET/LIMIT{{end}}
                 </div>
             </div>
