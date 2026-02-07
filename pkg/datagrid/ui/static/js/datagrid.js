@@ -99,6 +99,7 @@ function updateSortIcons() {
     $('.datagrid-table th').each(function () {
         const field = $(this).data('field');
         $(this).find('.sort-indicator').remove();
+        $(this).attr('data-sort', 'NONE'); // Forensic Reset
 
         const sortIdx = currentSort.findIndex(s => s.field === field);
         if (sortIdx !== -1) {
@@ -121,9 +122,18 @@ function updateSortIcons() {
                 html += `<span class="sort-rank-sub">${sortIdx + 1}</span>`;
             }
             html += `</span>`;
-            $(this).append(html).addClass('sort-active');
+            $(this).append(html).addClass('sort-active').attr('data-sort', s.dir);
         } else {
-            $(this).removeClass('sort-active');
+            $(this).removeClass('sort-active').attr('data-sort', 'NONE');
+        }
+    });
+}
+
+function applyRowStyles() {
+    $('.datagrid-table tbody tr').each(function () {
+        const style = $(this).attr('data-row-style');
+        if (style) {
+            $(this).attr('style', style);
         }
     });
 }
@@ -340,22 +350,37 @@ function initEvents() {
                 $(this).data('current', next);
                 window.location.href = `/?lang=${next}`; // Simplified for demo
                 break;
+            case 'expand-keys':
+                const $btn = $(this);
+                const isExpanded = $btn.hasClass('active');
+
+                if (!isExpanded) {
+                    expandJSONKeys();
+                    $btn.addClass('active').attr('title', 'Collapse JSON Keys');
+                    const iconLibExp = ($('meta[name="icon-library"]').attr('content') || 'FontAwesome').toLowerCase();
+                    const $i = $btn.find('i');
+                    if (iconLibExp.includes('phosphor')) {
+                        $i.attr('class', 'ph ph-corners-in');
+                    } else {
+                        $i.attr('class', 'fas fa-compress-alt');
+                    }
+                } else {
+                    $('.col-dyn-key').remove();
+                    $btn.removeClass('active').attr('title', 'Expand JSON Keys');
+                    const iconLibExp2 = ($('meta[name="icon-library"]').attr('content') || 'FontAwesome').toLowerCase();
+                    const $i2 = $btn.find('i');
+                    if (iconLibExp2.includes('phosphor')) {
+                        $i2.attr('class', 'ph ph-corners-out');
+                    } else {
+                        $i2.attr('class', 'fas fa-expand-alt');
+                    }
+                }
+                saveSettings();
+                break;
         }
     });
 
-    $(document).on('click', '#expand-keys-btn', function () {
-        const $btn = $(this);
-        const isExpanded = $btn.hasClass('active');
-
-        if (!isExpanded) {
-            expandJSONKeys();
-            $btn.addClass('active').attr('title', 'Collapse JSON Keys').find('i').attr('class', 'fas fa-compress-alt');
-        } else {
-            $('.col-dyn-key').remove();
-            $btn.removeClass('active').attr('title', 'Expand JSON Keys').find('i').attr('class', 'fas fa-expand-alt');
-        }
-        saveSettings();
-    });
+    $(document).off('click', '#expand-keys-btn'); // Cleanup old listener if any
 
     // 6. Pagination
     $(document).on('click', '#prev-page-btn', function () {
@@ -508,6 +533,7 @@ document.body.addEventListener('htmx:afterSwap', function (evt) {
         }
 
         applySettingsToTable();
+        applyRowStyles();
         updateSortIcons();
         initColumnChooser();
     }
@@ -560,6 +586,7 @@ $(document).ready(function () {
     // Initial apply if table already present
     if ($('.datagrid-table').length) {
         applySettingsToTable();
+        applyRowStyles();
         updateSortIcons();
         initColumnChooser();
     }

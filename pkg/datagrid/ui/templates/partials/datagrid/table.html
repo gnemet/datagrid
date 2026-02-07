@@ -5,7 +5,7 @@
             {{range .UIColumns}}
             <th class="{{if .Class}}{{.Class}}{{else}}col-{{.Field}}{{end}}{{if not .Visible}} hidden-col{{end}}{{if .Sortable}} sortable{{end}}"
                 title="{{.Label}}" data-field="{{.Field}}" data-label="{{.Label}}" data-sortable="{{.Sortable}}"
-                draggable="true">
+                data-sort="NONE" draggable="true">
                 {{if .Icon}}
                 <i class="{{if $.IsPhosphor}}ph {{if not (contains .Icon " ph-")}}ph-{{end}}{{else}}fas {{if not
                     (contains .Icon "fa-" )}}fa-{{end}}{{end}}{{.Icon}}"></i>
@@ -18,7 +18,7 @@
     </thead>
     <tbody>
         {{range .Records}}
-        <tr data-id="{{.id}}" data-json="{{._json}}" {{if ._row_style}}style="{{._row_style}}" {{end}} {{if
+        <tr data-id="{{.id}}" data-json="{{._json}}" {{if ._row_style}}data-row-style="{{._row_style}}" {{end}} {{if
             ._row_class}}class="{{._row_class}}" {{end}}>
             {{$row := .}}
             {{range $.UIColumns}}

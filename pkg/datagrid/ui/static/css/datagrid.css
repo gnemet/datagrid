@@ -460,10 +460,11 @@
 .datagrid-table td[data-field="id"],
 .datagrid-table td[data-field="salary"],
 .datagrid-table td[data-field="earnings"],
-.col-number {
-    font-family: var(--dg-font-mono);
-    font-variant-numeric: tabular-nums;
-    text-align: right;
+.col-number,
+.col-id {
+    font-family: var(--dg-font-mono) !important;
+    font-variant-numeric: tabular-nums !important;
+    text-align: right !important;
 }
 
 .datagrid-table tr:hover td {
