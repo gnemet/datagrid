@@ -664,7 +664,28 @@ func (h *Handler) buildOrder(sorts []string) string {
 		return "ASC"
 	}
 
-	defaultSort := "ORDER BY id DESC"
+	defaultSortCol := "id"
+	// Try to find a better default from catalog if 'id' might not exist
+	if len(h.Catalog.Objects) > 0 && len(h.Catalog.Objects[0].Columns) > 0 {
+		foundID := false
+		var firstPK string
+		for _, col := range h.Catalog.Objects[0].Columns {
+			if col.Name == "id" {
+				foundID = true
+				break
+			}
+			if col.PrimaryKey && firstPK == "" {
+				firstPK = col.Name
+			}
+		}
+		if !foundID && firstPK != "" {
+			defaultSortCol = firstPK
+		} else if !foundID {
+			defaultSortCol = h.Catalog.Objects[0].Columns[0].Name
+		}
+	}
+
+	defaultSort := fmt.Sprintf("ORDER BY %s DESC", defaultSortCol)
 	if h.Config.Defaults.SortColumn != "" {
 		dir := validateDir(h.Config.Defaults.SortDirection)
 		defaultSort = fmt.Sprintf("ORDER BY %s %s", h.Config.Defaults.SortColumn, dir)
