@@ -2,9 +2,9 @@
  * datagrid.js - Forensic DOM Table Handler
  * Advanced version with Multi-Sort, Column-Chooser, Drag-and-Drop, and Persistence
  */
-const DATAGRID_SETTINGS_KEY = 'dg_settings_v1_';
-let currentSort = [];
-let draggingCol = null;
+var DATAGRID_SETTINGS_KEY = 'dg_settings_v1_';
+var currentSort = currentSort || [];
+var draggingCol = draggingCol || null;
 
 function getSettingsKey() {
     const resource = window.datagridResource || 'default';
@@ -56,6 +56,7 @@ function getColClass($el) {
 }
 
 function escapeClass(cls) {
+    if (!cls) return '';
     return cls.replace(/\./g, '\\.');
 }
 
@@ -65,6 +66,7 @@ function applySettingsToTable() {
     try {
         const s = JSON.parse(raw);
         const $table = $('.datagrid-table');
+        if (!$table.length) return;
         const $thead = $table.find('thead tr');
 
         // 1. Reorder
@@ -162,7 +164,7 @@ function initColumnChooser() {
         $dropdown.append($item);
     });
 
-    $dropdown.find('input').on('change', function () {
+    $dropdown.find('input').off('change').on('change', function () {
         const colClass = $(this).data('col');
         const checked = $(this).is(':checked');
         const escaped = escapeClass(colClass);
@@ -175,28 +177,37 @@ function initColumnChooser() {
     });
 }
 
-function initEvents() {
+function initDatagrid() {
+    if (window.DATAGRID_INITIALIZED) {
+        if ($('.datagrid-table').length) {
+            applySettingsToTable();
+            updateSortIcons();
+            initColumnChooser();
+        }
+        return;
+    }
+
     // 1. Column Chooser Toggle
-    $(document).on('click', '#column-chooser-btn', function (e) {
+    $(document).off('click.dg-chooser').on('click.dg-chooser', '#column-chooser-btn', function (e) {
         e.stopPropagation();
         $('#column-chooser-dropdown').toggleClass('hidden');
     });
 
-    $(document).on('click', function () {
+    $(document).off('click.dg-close-chooser').on('click.dg-close-chooser', function () {
         $('#column-chooser-dropdown').addClass('hidden');
     });
 
     // 1.5 Sidebar Toggle
-    $(document).on('click', '#toggle-sidebar-btn', function (e) {
+    $(document).off('click.dg-sidebar').on('click.dg-sidebar', '#toggle-sidebar-btn', function (e) {
         $('#datagrid-detail-sidebar').toggleClass('collapsed');
     });
 
-    $('#column-chooser-dropdown').on('click', function (e) {
+    $('#column-chooser-dropdown').off('click').on('click', function (e) {
         e.stopPropagation();
     });
 
     // 2. Sorting & Hiding
-    $(document).on('click', '.datagrid-table th.sortable', function (e) {
+    $(document).off('click.dg-sort').on('click.dg-sort', '.datagrid-table th.sortable', function (e) {
         if ($(e.target).hasClass('resizer')) return;
 
         // Shift+Click: Hide Column
@@ -238,35 +249,35 @@ function initEvents() {
     });
 
     // 3. Resizing
-    $(document).on('mousedown', '.resizer', function (e) {
+    $(document).off('mousedown.dg-resize').on('mousedown.dg-resize', '.resizer', function (e) {
         const th = $(this).closest('th');
         const startX = e.pageX;
         const startWidth = th.outerWidth();
-        $(document).on('mousemove.datagrid-resize', (me) => {
+        $(document).off('mousemove.datagrid-resize-move').on('mousemove.datagrid-resize-move', (me) => {
             th.css('width', (startWidth + (me.pageX - startX)) + 'px');
         });
-        $(document).on('mouseup.datagrid-resize', () => {
-            $(document).off('.datagrid-resize');
+        $(document).off('mouseup.datagrid-resize-up').on('mouseup.datagrid-resize-up', () => {
+            $(document).off('mousemove.datagrid-resize-move mouseup.datagrid-resize-up');
             saveSettings();
         });
     });
 
     // 4. Dragging
-    $(document).on('dragstart', '.datagrid-table th', function (e) {
+    $(document).off('dragstart.dg-drag').on('dragstart.dg-drag', '.datagrid-table th', function (e) {
         draggingCol = this;
         $(this).addClass('dragging');
     });
 
-    $(document).on('dragover', '.datagrid-table th', function (e) {
+    $(document).off('dragover.dg-drag').on('dragover.dg-drag', '.datagrid-table th', function (e) {
         e.preventDefault();
         $(this).addClass('drag-over');
     });
 
-    $(document).on('dragleave', '.datagrid-table th', function () {
+    $(document).off('dragleave.dg-drag').on('dragleave.dg-drag', '.datagrid-table th', function () {
         $(this).removeClass('drag-over');
     });
 
-    $(document).on('drop', '.datagrid-table th', function (e) {
+    $(document).off('drop.dg-drag').on('drop.dg-drag', '.datagrid-table th', function (e) {
         e.preventDefault();
         $(this).removeClass('drag-over');
         if (draggingCol && draggingCol !== this) {
@@ -289,14 +300,14 @@ function initEvents() {
         }
     });
 
-    $(document).on('dragend', '.datagrid-table th', function () {
+    $(document).off('dragend.dg-drag').on('dragend.dg-drag', '.datagrid-table th', function () {
         $(this).removeClass('dragging');
         $('.datagrid-table th').removeClass('drag-over');
         draggingCol = null;
     });
 
     // 5. Row Selection & Detail View
-    $(document).on('click', '.datagrid-table tbody tr', function (e) {
+    $(document).off('click.dg-row').on('click.dg-row', '.datagrid-table tbody tr', function (e) {
         if ($(e.target).closest('button, a, input, [data-action]').length) return;
 
         $('.datagrid-table tbody tr').removeClass('selected');
@@ -308,7 +319,7 @@ function initEvents() {
         }
     });
 
-    $(document).on('click', '[data-action]', function (e) {
+    $(document).off('click.dg-action').on('click.dg-action', '[data-action]', function (e) {
         const action = $(this).data('action');
         switch (action) {
             case 'close-sidebar':
@@ -343,12 +354,8 @@ function initEvents() {
                 }
                 break;
             case 'switch-lang':
-                const langs = $(this).data('langs') || ['en'];
-                const current = $(this).data('current') || 'en';
-                const nextIdx = (langs.indexOf(current) + 1) % langs.length;
-                const next = langs[nextIdx];
-                $(this).data('current', next);
-                window.location.href = `/?lang=${next}`; // Simplified for demo
+                const nextLang = $(this).data('next-lang') || 'en';
+                window.location.href = `/?lang=${nextLang}`;
                 break;
             case 'expand-keys':
                 const $btn = $(this);
@@ -383,7 +390,7 @@ function initEvents() {
     $(document).off('click', '#expand-keys-btn'); // Cleanup old listener if any
 
     // 6. Pagination
-    $(document).on('click', '#prev-page-btn', function () {
+    $(document).off('click.dg-prev').on('click.dg-prev', '#prev-page-btn', function () {
         const offset = parseInt($('#offset-input').val()) || 0;
         const limit = parseInt($('#limit-input').val()) || 20;
         if (offset > 0) {
@@ -392,7 +399,7 @@ function initEvents() {
         }
     });
 
-    $(document).on('click', '#next-page-btn', function () {
+    $(document).off('click.dg-next').on('click.dg-next', '#next-page-btn', function () {
         const offset = parseInt($('#offset-input').val()) || 0;
         const limit = parseInt($('#limit-input').val()) || 20;
         const total = parseInt($('#pagination-metadata').data('total-count')) || 0;
@@ -402,22 +409,23 @@ function initEvents() {
         }
     });
 
-    $(document).on('click', '#page-size-btn', function () {
-        const currentLimit = parseInt($('#limit-input').val()) || 20;
+    $(document).off('click.dg-psize').on('click.dg-psize', '#page-size-btn', function () {
         const sizes = [10, 20, 50, 100];
+        const currentLimit = parseInt($('#limit-input').val()) || 20;
         const nextIdx = (sizes.indexOf(currentLimit) + 1) % sizes.length;
         const nextLimit = sizes[nextIdx];
 
         $('#limit-input').val(nextLimit);
-        $('#offset-input').val(0); // Reset to page 1 on limit change
+        $('#offset-input').val(0);
         $(this).text(nextLimit);
         triggerPagination();
         saveSettings();
     });
+
+    window.DATAGRID_INITIALIZED = true;
 }
 
 function triggerPagination() {
-    console.log('Triggering pagination. Limit:', $('#limit-input').val(), 'Offset:', $('#offset-input').val());
     htmx.trigger('#datagrid-filter-form', 'submit');
 }
 
@@ -509,38 +517,9 @@ function expandJSONKeys() {
     });
 }
 
-// HTMX Config
-document.body.addEventListener('htmx:configRequest', function (evt) {
-    if (evt.detail.parameters) {
-        evt.detail.parameters['sort'] = currentSort.map(s => `${s.field}:${s.dir}`).join(',');
-    }
-});
-
-document.body.addEventListener('htmx:afterSwap', function (evt) {
-    if (evt.target.id === 'datagrid-container' || evt.target.classList.contains('datagrid-table')) {
-        const $meta = $('#pagination-metadata');
-        if ($meta.length) {
-            const limit = $meta.data('limit');
-            const offset = $meta.data('offset');
-            $('#limit-input').val(limit);
-            $('#offset-input').val(offset);
-            $('#page-size-btn').text(limit);
-
-            // Update disabled states
-            const total = $meta.data('total-count');
-            $('#prev-page-btn').prop('disabled', offset <= 0);
-            $('#next-page-btn').prop('disabled', offset + limit >= total);
-        }
-
-        applySettingsToTable();
-        applyRowStyles();
-        updateSortIcons();
-        initColumnChooser();
-    }
-});
-
 function updateLeftSidebar(data) {
     const container = $('#datagrid-detail-content');
+    if (!container.length) return;
     container.empty();
 
     let record = data;
@@ -551,12 +530,12 @@ function updateLeftSidebar(data) {
     const $list = $('<div class="dg-details-list"></div>');
 
     const renderItems = (obj, prefix = '') => {
+        if (!obj || typeof obj !== 'object') return;
         Object.entries(obj).forEach(([key, val]) => {
             if (key.startsWith('_')) return;
 
-            // Attempt to parse string as JSON
             let nested = val;
-            if (typeof val === 'string' && (val.startsWith('{') || val.startsWith('['))) {
+            if (typeof val === 'string' && (val.trim().startsWith('{') || val.trim().startsWith('['))) {
                 try { nested = JSON.parse(val); } catch (e) { }
             }
 
@@ -580,14 +559,47 @@ function updateLeftSidebar(data) {
     container.append($list);
 }
 
-$(document).ready(function () {
+// Global initialization
+if (document.readyState === 'loading') {
+    $(document).ready(function () {
+        loadSettings();
+        initDatagrid();
+    });
+} else {
     loadSettings();
-    initEvents();
-    // Initial apply if table already present
-    if ($('.datagrid-table').length) {
+    initDatagrid();
+}
+
+// HTMX compatibility
+document.body.addEventListener('htmx:configRequest', function (evt) {
+    if (evt.detail.parameters && currentSort.length > 0) {
+        evt.detail.parameters['sort'] = currentSort.map(s => `${s.field}:${s.dir}`).join(',');
+    }
+});
+
+document.body.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.target.id === 'datagrid-container' || evt.target.classList.contains('datagrid-table')) {
+        const $meta = $('#pagination-metadata');
+        if ($meta.length) {
+            const limit = $meta.data('limit');
+            const offset = $meta.data('offset');
+            $('#limit-input').val(limit);
+            $('#offset-input').val(offset);
+            $('#page-size-btn').text(limit);
+
+            const total = $meta.data('total-count');
+            $('#prev-page-btn').prop('disabled', offset <= 0);
+            $('#next-page-btn').prop('disabled', offset + limit >= total);
+        }
+
         applySettingsToTable();
         applyRowStyles();
         updateSortIcons();
         initColumnChooser();
+
+        // Remove initialization mask after layout settles
+        setTimeout(() => {
+            $('.datagrid-table').removeClass('dg-initializing');
+        }, 50);
     }
 });
