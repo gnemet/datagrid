@@ -444,5 +444,10 @@ document.body.addEventListener('htmx:afterSwap', function (evt) {
         applySettingsToTable();
         updateSortIcons();
         initColumnChooser();
+
+        // Remove initialization mask after layout settles
+        setTimeout(() => {
+            $('.datagrid-table').removeClass('dg-initializing');
+        }, 50);
     }
 });
