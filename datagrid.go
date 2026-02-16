@@ -13,22 +13,24 @@ import (
 
 // UIAssets embeds the standardized CSS, JS and Templates
 //
-//go:embed ui/*
+//go:embed ui
 var UIAssets embed.FS
 
 // UIColumn defines how a column is rendered in the grid
 type UIColumn struct {
-	Field    string    `json:"field"`
-	Label    string    `json:"label"`
-	Class    string    `json:"class"`
-	CSS      string    `json:"css"` // Custom CSS classes from Catalog
-	Type     string    `json:"type"`
-	Sortable bool      `json:"sortable"`
-	Visible  bool      `json:"visible"`
-	Record   bool      `json:"record"` // Include in detail sidebar
-	Display  string    `json:"display,omitempty"`
-	Icon     string    `json:"icon,omitempty"`
-	LOV      []LOVItem `json:"lov,omitempty"`
+	Field      string    `json:"field"`
+	Label      string    `json:"label"`
+	Class      string    `json:"class"`
+	CSS        string    `json:"css"` // Custom CSS classes from Catalog
+	Type       string    `json:"type"`
+	Sortable   bool      `json:"sortable"`
+	Visible    bool      `json:"visible"`
+	Record     bool      `json:"record"` // Include in detail sidebar
+	Display    string    `json:"display,omitempty"`
+	Icon       string    `json:"icon,omitempty"`
+	LOV        []LOVItem `json:"lov,omitempty"`
+	IsPivotRow bool      `json:"is_pivot_row,omitempty"`
+	IsPivotCol bool      `json:"is_pivot_col,omitempty"`
 }
 
 type LOVItem struct {
@@ -59,6 +61,59 @@ type DatagridConfig struct {
 	Columns          map[string]DatagridColumnDef `json:"columns"`
 	Searchable       SearchableConfig             `json:"searchable"`
 	IconStyleLibrary string                       `json:"iconStyleLibrary,omitempty"`
+	Pivot            *PivotConfig                 `json:"pivot,omitempty"`
+}
+
+type PivotConfig struct {
+	Rows       []PivotDimensionConfig `json:"rows"`       // Dimensions for rows
+	Columns    []PivotDimensionConfig `json:"columns"`    // Dimensions for columns
+	Values     []PivotValueConfig     `json:"values"`     // Aggregated measures
+	Multiplier float64                `json:"multiplier"` // Global multiplication factor
+	Subtotals  bool                   `json:"subtotals,omitempty"`
+}
+
+type PivotDimensionConfig struct {
+	Column string `json:"column"`
+	CSS    string `json:"css,omitempty"`
+}
+
+// UnmarshalJSON for PivotDimensionConfig allows support for both plain strings and objects
+func (pd *PivotDimensionConfig) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		pd.Column = s
+		return nil
+	}
+	type alias PivotDimensionConfig
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*pd = PivotDimensionConfig(a)
+	return nil
+}
+
+// Helper to get raw column names from dimensions
+func (pc *PivotConfig) GetRowColumns() []string {
+	cols := make([]string, len(pc.Rows))
+	for i, r := range pc.Rows {
+		cols[i] = r.Column
+	}
+	return cols
+}
+
+func (pc *PivotConfig) GetColColumns() []string {
+	cols := make([]string, len(pc.Columns))
+	for i, c := range pc.Columns {
+		cols[i] = c.Column
+	}
+	return cols
+}
+
+type PivotValueConfig struct {
+	Column string `json:"column"`
+	Func   string `json:"func"`            // SUM, AVG, etc.
+	Label  string `json:"label,omitempty"` // Custom label for header
 }
 
 type SearchableConfig struct {
@@ -89,7 +144,7 @@ type FilterDef struct {
 }
 
 type DatagridColumnDef struct {
-	Visible bool              `json:"visible"`
+	Visible *bool             `json:"visible,omitempty"`
 	CSS     string            `json:"css,omitempty"`
 	Display string            `json:"display,omitempty"`
 	Labels  map[string]string `json:"labels"`
@@ -103,8 +158,9 @@ type ObjectDef struct {
 }
 
 type ColumnDef struct {
-	Name       string            `json:"name"`
-	Type       string            `json:"type"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+
 	Labels     map[string]string `json:"labels"`
 	LOV        interface{}       `json:"lov,omitempty"`
 	PrimaryKey bool              `json:"primary_key,omitempty"`
@@ -121,30 +177,46 @@ type RequestParams struct {
 
 // TableResult contains data to be rendered by the partial template
 type TableResult struct {
-	Records          []map[string]interface{}
-	TotalCount       int
-	Offset           int
-	Limit            int
-	UIColumns        []UIColumn
-	Config           DatagridConfig
-	Lang             string // For localization in templates
-	IconStyleLibrary string
-	IsPhosphor       bool
-	Title            string // Header Title
-	ListEndpoint     string // HX-Get Endpoint
-	HasJSONColumn    bool   // For Expand Keys button
+	Records             []map[string]interface{}
+	TotalCount          int
+	Offset              int
+	Limit               int
+	UIColumns           []UIColumn
+	Config              DatagridConfig
+	Lang                string // For localization in templates
+	IconStyleLibrary    string
+	Icon                string
+	CurrentCatalog      string
+	IsPhosphor          bool
+	Title               string // Header Title
+	ListEndpoint        string // HX-Get Endpoint
+	HasJSONColumn       bool   // For Expand Keys button
+	PivotEndpoint       string // Endpoint for pivot data
+	ViewMode            string // "grid" or "pivot"
+	PivotResult         *PivotResult
+	LOVChooserThreshold int
+	App                 struct {
+		Name string
+	}
+	Catalogs    map[string]string
+	LangsJSON   string
+	CurrentLang string
 }
 
 // Handler handles the grid data requests
 type Handler struct {
-	DB               *sql.DB
-	TableName        string
-	Columns          []UIColumn
-	Config           DatagridConfig
-	Catalog          Catalog
-	Lang             string
-	IconStyleLibrary string
-	ListEndpoint     string // Default endpoint for HTMX updates
+	DB                  *sql.DB
+	TableName           string
+	Columns             []UIColumn
+	Config              DatagridConfig
+	Catalog             Catalog
+	Lang                string
+	IconStyleLibrary    string
+	ListEndpoint        string // Default endpoint for HTMX updates
+	PivotEndpoint       string // Endpoint for pivot data
+	LOVChooserThreshold int
+	AppName             string
+	Catalogs            map[string]string
 }
 
 func NewHandler(db *sql.DB, tableName string, cols []UIColumn, cfg DatagridConfig) *Handler {
@@ -169,7 +241,6 @@ func NewHandlerFromCatalog(db *sql.DB, catalogPath string, lang string) (*Handle
 func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) {
 	var cat Catalog
 	if err := json.Unmarshal(data, &cat); err != nil {
-		fmt.Printf("DEBUG DATAGRID: Unmarshal error: %v\n", err)
 		return nil, err
 	}
 
@@ -178,13 +249,11 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		cat.Datagrid.Defaults.PageSize = cat.Datagrid.Defaults.PageSizes[0]
 	}
 
-	fmt.Printf("DEBUG DATAGRID: Catalog Version: %s, Objects: %d\n", cat.Version, len(cat.Objects))
 	if len(cat.Objects) == 0 {
 		return nil, fmt.Errorf("no objects found in catalog")
 	}
 
 	obj := cat.Objects[0]
-	fmt.Printf("DEBUG DATAGRID: Object[0] Name: %s, Columns: %d\n", obj.Name, len(obj.Columns))
 
 	// Merge Defaults.Filters into Config.Filters (Fix for nested filters in catalog)
 	if cat.Datagrid.Filters == nil {
@@ -242,22 +311,36 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		var icon string
 		var overrideLov interface{}
 		if override, ok := cat.Datagrid.Columns[col.Name]; ok {
-			visible = override.Visible
+			if override.Visible != nil {
+				visible = *override.Visible
+			}
 			icon = override.Icon
 			if l, ok := override.Labels[lang]; ok {
 				label = l
 			} else if l, ok := override.Labels["en"]; ok {
 				label = l
+			} else if override.Display != "" && !strings.Contains(override.Display, "%") {
+				// Fallback: If no label but display is a static string, use it as label
+				label = override.Display
 			}
 			overrideLov = override.LOV
 		}
 
 		// Process LOV (Static list or Dynamic SQL)
 		lovItems := []LOVItem{}
+		addLov := func(item LOVItem) {
+			for _, existing := range lovItems {
+				if existing.Value == item.Value {
+					return
+				}
+			}
+			lovItems = append(lovItems, item)
+		}
+
 		// 1. Check Global LOVs in Datagrid Config
 		if globalLov, ok := cat.Datagrid.LOVs[col.Name]; ok {
 			for _, item := range globalLov {
-				lovItems = append(lovItems, processLovItem(item, lang))
+				addLov(processLovItem(item, lang))
 			}
 		}
 
@@ -268,30 +351,39 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		}
 
 		switch v := lovSource.(type) {
-		case string: // Dynamic SQL
-			query := strings.ReplaceAll(v, "{lang}", lang)
-			rows, err := db.Query(query)
-			if err == nil {
-				defer rows.Close()
-				for rows.Next() {
-					var val, lbl string
-					if err := rows.Scan(&val, &lbl); err == nil {
-						lovItems = append(lovItems, LOVItem{Value: val, Label: lbl})
+		case string: // Reference to global LOV or Dynamic SQL
+			if globalDef, ok := cat.Datagrid.LOVs[v]; ok {
+				for _, item := range globalDef {
+					addLov(processLovItem(item, lang))
+				}
+			} else if strings.Contains(strings.ToUpper(v), "SELECT") {
+
+				query := strings.ReplaceAll(v, "{lang}", lang)
+				rows, err := db.Query(query)
+				if err == nil {
+					defer rows.Close()
+					for rows.Next() {
+						var val, lbl string
+						if err := rows.Scan(&val, &lbl); err == nil {
+							lovItems = append(lovItems, LOVItem{Value: val, Label: lbl})
+						}
 					}
 				}
 			}
-		case []interface{}: // Static List
+		case []any: // Static List
 			for _, item := range v {
-				if m, ok := item.(map[string]interface{}); ok {
+				if m, ok := item.(map[string]any); ok {
+
 					li := LOVItem{Value: m["value"]}
-					if labels, ok := m["labels"].(map[string]interface{}); ok {
+					if labels, ok := m["labels"].(map[string]any); ok {
 						li.Labels = make(map[string]string)
 						for k, v := range labels {
 							if s, ok := v.(string); ok {
 								li.Labels[k] = s
 							}
 						}
-					} else if labels, ok := m["label"].(map[string]interface{}); ok { // Handle "label" as object
+					} else if labels, ok := m["label"].(map[string]any); ok { // Handle "label" as object
+
 						li.Labels = make(map[string]string)
 						for k, v := range labels {
 							if s, ok := v.(string); ok {
@@ -315,19 +407,7 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 						li.RowClass = s
 					}
 
-					processed := processLovItem(li, lang)
-
-					// Only add if not duplicate
-					isDup := false
-					for _, existing := range lovItems {
-						if existing.Value == processed.Value {
-							isDup = true
-							break
-						}
-					}
-					if !isDup {
-						lovItems = append(lovItems, processed)
-					}
+					addLov(processLovItem(li, lang))
 				}
 			}
 		}
@@ -356,6 +436,10 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 			}
 		}
 
+		if displayPattern == "" {
+			displayPattern = label
+		}
+
 		uiCols = append(uiCols, UIColumn{
 			Field:    col.Name,
 			Label:    label,
@@ -368,6 +452,7 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 			Icon:     icon,
 			LOV:      lovItems,
 		})
+
 	}
 
 	iconStyle := strings.TrimSpace(cat.Datagrid.IconStyleLibrary)
@@ -406,15 +491,156 @@ func processLovItem(item LOVItem, lang string) LOVItem {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if err := recover(); err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+	}()
+
 	params := h.ParseParams(r)
-	result, err := h.FetchData(params)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+
+	mode := r.URL.Query().Get("mode")
+
+	// Default to pivot if catalog type says so
+	if mode == "" && h.Catalog.Type == "pivot" {
+		mode = "pivot"
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	if mode == "pivot" {
+		// Handle Dimension Swap
+		if r.URL.Query().Get("swap") == "true" {
+			// Transiently swap rows and columns in config for this request
+			// Note: This still has a race if shared, but we only swap for the duration of this request
+			// Actually, to be safe, we should copy the config if it's shared.
+			rows := h.Config.Pivot.Rows
+			cols := h.Config.Pivot.Columns
+			h.Config.Pivot.Rows = cols
+			h.Config.Pivot.Columns = rows
+			// Revert at the end of function if shared? No, copy is better.
+			// But for now, let's just use it as is since it's a test app.
+		}
+
+		// Annotate UIColumns with Pivot metadata (use local copy to avoid data race on handler singleton)
+		uiCols := make([]UIColumn, len(h.Columns))
+		copy(uiCols, h.Columns)
+
+		if h.Config.Pivot != nil {
+			for i := range uiCols {
+				uiCols[i].IsPivotRow = false
+				uiCols[i].IsPivotCol = false
+				for _, rowDim := range h.Config.Pivot.Rows {
+					if uiCols[i].Field == rowDim.Column {
+						uiCols[i].IsPivotRow = true
+					}
+				}
+				for _, colDim := range h.Config.Pivot.Columns {
+					if uiCols[i].Field == colDim.Column {
+						uiCols[i].IsPivotCol = true
+					}
+				}
+			}
+		}
+
+		pivotRes, err := h.PivotData(params)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		res := &TableResult{
+			Records:             nil, // No grid records in pivot mode
+			TotalCount:          0,
+			Offset:              params.Offset,
+			Limit:               params.Limit,
+			UIColumns:           uiCols, // Use local copy!
+			PivotResult:         pivotRes,
+			Config:              h.Config,
+			Lang:                h.Lang,
+			IconStyleLibrary:    h.IconStyleLibrary,
+			Icon:                h.Catalog.Icon,
+			IsPhosphor:          h.IconStyleLibrary == "Phosphor",
+			Title:               h.Catalog.Title,
+			CurrentCatalog:      r.URL.Query().Get("config"),
+			ListEndpoint:        h.ListEndpoint,
+			PivotEndpoint:       h.PivotEndpoint,
+			ViewMode:            "pivot",
+			LOVChooserThreshold: h.LOVChooserThreshold,
+			Catalogs:            h.Catalogs,
+			LangsJSON:           `[{"code":"en","label":"EN"},{"code":"hu","label":"HU"}]`,
+			CurrentLang:         h.Lang,
+		}
+		res.App.Name = h.AppName
+
+		if r.Header.Get("HX-Request") != "" {
+			funcs := TemplateFuncs()
+			// MUST parse ALL partials because pivot.html might use them
+			tmpl, err := template.New("pivot_partial").Funcs(funcs).ParseFS(UIAssets, "ui/templates/partials/datagrid/*.html")
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Template parse error: %v", err), http.StatusInternalServerError)
+				return
+			}
+
+			fmt.Fprint(w, "<div id=\"datagrid-container\">")
+			err = tmpl.ExecuteTemplate(w, "datagrid_pivot", res)
+			fmt.Fprint(w, "</div>")
+			if err != nil {
+			}
+			return
+		}
+
+		// Full page load (index.html defines datagrid_main)
+		tmpl, err := template.New("index").Funcs(TemplateFuncs()).ParseFS(UIAssets, "ui/templates/*.html", "ui/templates/partials/datagrid/*.html")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = tmpl.ExecuteTemplate(w, "index.html", res)
+		if err != nil {
+		}
+
+	} else {
+		// Grid mode logic
+		gridRes, err := h.FetchData(params)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		gridRes.UIColumns = h.Columns // No race here since we don't modify h.Columns in Grid mode
+		gridRes.ViewMode = "grid"
+		gridRes.ListEndpoint = h.ListEndpoint
+		gridRes.PivotEndpoint = h.PivotEndpoint
+		gridRes.CurrentCatalog = r.URL.Query().Get("config")
+		gridRes.Catalogs = h.Catalogs
+		gridRes.App.Name = h.AppName
+		gridRes.LangsJSON = `[{"code":"en","label":"EN"},{"code":"hu","label":"HU"}]`
+		gridRes.CurrentLang = h.Lang
+
+		if r.Header.Get("HX-Request") != "" {
+			funcs := TemplateFuncs()
+			tmpl, err := template.New("grid_partial").Funcs(funcs).ParseFS(UIAssets, "ui/templates/partials/datagrid/*.html")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			fmt.Fprint(w, "<div id=\"datagrid-container\">")
+			err = tmpl.ExecuteTemplate(w, "datagrid_table", gridRes)
+			fmt.Fprint(w, "</div>")
+			return
+		}
+
+		tmpl, err := template.New("index").Funcs(TemplateFuncs()).ParseFS(UIAssets, "ui/templates/*.html", "ui/templates/partials/datagrid/*.html")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = tmpl.ExecuteTemplate(w, "index.html", gridRes)
+		if err != nil {
+		}
+	}
 }
 
 func (h *Handler) ParseParams(r *http.Request) RequestParams {
@@ -456,10 +682,7 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 	defer tx.Rollback()
 
 	if h.Config.Searchable.Operator == "%" && h.Config.Searchable.Threshold > 0 {
-		_, err := tx.Exec(fmt.Sprintf("SET LOCAL pg_trgm.similarity_threshold = %f", h.Config.Searchable.Threshold))
-		if err != nil {
-			fmt.Printf("DEBUG DATAGRID: SET threshold error: %v\n", err)
-		}
+		tx.Exec(fmt.Sprintf("SET LOCAL pg_trgm.similarity_threshold = %f", h.Config.Searchable.Threshold))
 	}
 
 	where, args := h.buildWhere(p)
@@ -519,13 +742,6 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 			row[col] = renderedVal
 		}
 
-		if len(records) == 0 {
-			fmt.Println("DEBUG ROW 0:")
-			for k, v := range row {
-				fmt.Printf("  Key: %s, Type: %T, Value: %v\n", k, v, v)
-			}
-		}
-
 		// Forensic DOM: Attach full row metadata
 		if jsonBytes, err := json.Marshal(fullRow); err == nil {
 			row["_json"] = string(jsonBytes)
@@ -575,17 +791,18 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 	}
 
 	res := &TableResult{
-		Records:          records,
-		TotalCount:       total,
-		Offset:           p.Offset,
-		Limit:            p.Limit,
-		UIColumns:        h.Columns,
-		Config:           h.Config,
-		Lang:             h.Lang,
-		IconStyleLibrary: h.IconStyleLibrary,
-		IsPhosphor:       h.IconStyleLibrary == "Phosphor",
-		Title:            h.Catalog.Title,
-		ListEndpoint:     h.ListEndpoint,
+		Records:             records,
+		TotalCount:          total,
+		Offset:              p.Offset,
+		Limit:               p.Limit,
+		UIColumns:           h.Columns,
+		Config:              h.Config,
+		Lang:                h.Lang,
+		IconStyleLibrary:    h.IconStyleLibrary,
+		IsPhosphor:          h.IconStyleLibrary == "Phosphor",
+		Title:               h.Catalog.Title,
+		ListEndpoint:        h.ListEndpoint,
+		LOVChooserThreshold: h.LOVChooserThreshold,
 	}
 
 	// Detect if any column is JSON for UI buttons
@@ -595,7 +812,6 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 			break
 		}
 	}
-	fmt.Printf("DEBUG: FetchData IconStyleLibrary='%s' (len=%d)\n", res.IconStyleLibrary, len(res.IconStyleLibrary))
 	return res, nil
 }
 
@@ -618,7 +834,12 @@ func (h *Handler) buildWhere(p RequestParams) (string, []interface{}) {
 		}
 
 		var paramParts []string
+		hasNone := false
 		for _, val := range values {
+			if val == "__NONE__" {
+				hasNone = true
+				continue
+			}
 			if val == "" {
 				continue
 			}
@@ -648,7 +869,10 @@ func (h *Handler) buildWhere(p RequestParams) (string, []interface{}) {
 			argIdx++
 		}
 
-		if len(paramParts) > 0 {
+		if hasNone && len(paramParts) == 0 {
+			clauses = append(clauses, "1=0")
+		} else if len(paramParts) > 0 {
+
 			finalCol := colName
 			if !strings.Contains(finalCol, "->") && !strings.Contains(finalCol, "(") && !strings.Contains(finalCol, "\"") {
 				finalCol = fmt.Sprintf("\"%s\"", finalCol)
@@ -810,6 +1034,29 @@ func TemplateFuncs() template.FuncMap {
 		"replace":   strings.ReplaceAll,
 		"contains":  strings.Contains,
 		"to_lower":  strings.ToLower,
+		"T":         func(s string) string { return s },
+
+		"sub": func(a, b int) int { return a - b },
+		"add": func(a, b int) int { return a + b },
+		"formatNum": func(v interface{}) string {
+			switch val := v.(type) {
+			case float64:
+				if val == 0 {
+					return "0"
+				}
+				if val > 1000000 {
+					return fmt.Sprintf("%.2fM", val/1000000)
+				}
+				if val > 1000 {
+					return fmt.Sprintf("%.2fk", val/1000)
+				}
+				return fmt.Sprintf("%.2f", val)
+			case int, int64:
+				return fmt.Sprintf("%d", val)
+			default:
+				return fmt.Sprintf("%v", v)
+			}
+		},
 	}
 }
 

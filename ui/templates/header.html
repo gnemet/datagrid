@@ -1,0 +1,29 @@
+{{define "header"}}
+<header class="dg-main-header">
+    <div class="dg-header-content">
+        <div class="dg-brand-group">
+            <span class="dg-brand-name">{{.App.Name}}</span>
+            <span class="dg-header-separator">|</span>
+            <select class="dg-header-select" onchange="location.href='/?config=' + this.value">
+                {{range $name, $title := .Catalogs}}
+                <option value="{{$name}}" {{if eq $name $.CurrentCatalog}}selected{{end}}>{{$title}}</option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="dg-header-actions">
+            <button class="dg-header-btn loop-selector" data-action="switch-lang" data-langs='{{.LangsJSON}}'
+                data-current="{{.CurrentLang}}" title="Switch Language">
+                <i class="{{if eq $.IconStyleLibrary " Phosphor"}}ph ph-globe{{else}}fas fa-globe{{end}}"></i>
+            </button>
+            <button class="dg-header-btn loop-selector" data-action="switch-theme" title="Toggle Theme">
+                <i class="{{if eq $.IconStyleLibrary " Phosphor"}}ph ph-moon{{else}}fas fa-moon{{end}}"></i>
+            </button>
+            <button class="dg-header-btn" title="User Profile">
+                <i class="{{if eq $.IconStyleLibrary " Phosphor"}}ph ph-user-circle{{else}}fas
+                    fa-user-circle{{end}}"></i>
+            </button>
+        </div>
+    </div>
+</header>
+{{end}}

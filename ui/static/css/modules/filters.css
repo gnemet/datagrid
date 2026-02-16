@@ -1,0 +1,235 @@
+/* ==========================================================================
+   4. Search & Filters
+   ========================================================================== */
+.search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--dg-input-bg, #ffffff);
+    border: 1px solid var(--dg-input-border, var(--dg-border));
+    border-radius: var(--radius-sm, 4px);
+    padding: 0 10px;
+    width: 280px;
+    height: 32px;
+    transition: all 0.2s;
+}
+
+.search-wrapper:focus-within {
+    border-color: var(--dg-accent);
+    background: var(--bg-primary);
+    box-shadow: 0 0 0 3px var(--dg-accent-light);
+}
+
+.search-input {
+    background: var(--bg-secondary);
+    border: 1px solid var(--dg-border);
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    transition: all 0.2s;
+}
+
+.search-wrapper .search-input {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 10px !important;
+    width: 100% !important;
+    height: 100% !important;
+    font-size: 0.9rem !important;
+    box-shadow: none !important;
+}
+
+.filter-group-container {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.filter-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.filter-label i {
+    font-size: 0.85rem;
+    opacity: 0.7;
+}
+
+
+.dg-toggle-group {
+    display: flex;
+    gap: 4px;
+    padding: 2px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--dg-border);
+}
+
+.dg-toggle-btn {
+    background: var(--dg-muted-bg, #f3f4f6);
+    border: 1px solid var(--dg-border);
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    opacity: 0.6;
+    filter: grayscale(0.8);
+}
+
+.dg-toggle-btn:hover {
+    opacity: 1;
+    filter: none;
+    background: var(--dg-hover);
+    transform: translateY(-1px);
+}
+
+.dg-toggle-btn.active {
+    background: var(--dg-accent);
+    color: #ffffff;
+    opacity: 1;
+    filter: none;
+    border-color: var(--dg-accent);
+    box-shadow: 0 2px 4px rgba(var(--dg-accent-rgb, 0, 102, 255), 0.2);
+}
+
+
+.dg-select {
+    background: var(--bg-secondary);
+    border: 1px solid var(--dg-border);
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    transition: all 0.2s;
+}
+
+.dg-filter-select {
+    min-width: 150px;
+    height: auto;
+    max-height: 100px;
+    padding: 4px;
+}
+
+/* Custom Dropdown Filter */
+.dg-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dg-dropdown-trigger {
+    background: var(--bg-secondary);
+    border: 1px solid var(--dg-border);
+    padding: 2px 8px;
+    /* More compact */
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.75rem;
+    /* Match small toggle buttons */
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    height: 28px;
+}
+
+.dg-dropdown-trigger:hover {
+    background: var(--dg-accent-light);
+    border-color: var(--dg-accent);
+}
+
+.dg-dropdown-trigger i {
+    font-size: 1rem;
+    opacity: 0.7;
+}
+
+.dg-dropdown-content {
+
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    background: var(--dg-card-bg);
+    border: 1px solid var(--dg-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    min-width: 180px;
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.dg-dropdown.active .dg-dropdown-content {
+    display: block;
+}
+
+.dg-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+}
+
+.dg-dropdown-item:hover {
+    background: var(--dg-accent-light);
+}
+
+.dg-dropdown-item input[type="checkbox"] {
+    margin: 0;
+}
+
+/* Redefine Pills (Toggle Buttons) to be "nicer" */
+.dg-toggle-btn {
+    opacity: 0.7;
+    filter: grayscale(0.5);
+    background: var(--bg-secondary);
+    border: 1px solid var(--dg-border);
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    /* Smaller font */
+    font-weight: 500;
+}
+
+.dg-toggle-btn.active {
+    opacity: 1;
+    filter: none;
+    background: var(--dg-accent);
+    border-color: var(--dg-accent);
+    color: white;
+}
+
+
+.dg-header-select {
+    background: var(--bg-secondary);
+    border: 1px solid var(--dg-border);
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+}

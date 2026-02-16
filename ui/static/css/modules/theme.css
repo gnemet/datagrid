@@ -1,0 +1,131 @@
+/* ==========================================================================
+   1. Fonts & Configuration
+   ========================================================================== */
+@font-face {
+    font-family: 'Inter';
+    src: url('../fonts/Inter-400.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('../fonts/Inter-500.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('../fonts/Inter-600.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('../fonts/Inter-700.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('../fonts/Inter-800.ttf') format('truetype');
+    font-weight: 800;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-400.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-500.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+}
+
+:root {
+    /* Core Palette */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --card-bg: #ffffff;
+    --border-main: #e9ecef;
+    --text-primary: #1a1d21;
+    --text-secondary: #6c757d;
+    --accent-blue: #0061ff;
+    --accent-blue-soft: rgba(0, 97, 255, 0.08);
+    --accent-blue-hover: #0056e0;
+
+    /* Datagrid Tokens */
+    --dg-bg: var(--bg-primary);
+    --dg-card-bg: var(--card-bg);
+    --dg-header-bg: var(--bg-secondary);
+    --dg-border: var(--border-main);
+    --dg-text-main: var(--text-primary);
+    --dg-text-mute: var(--text-secondary);
+    --dg-accent: var(--accent-blue);
+    --dg-accent-light: var(--accent-blue-soft);
+    --dg-hover: #f1f3f5;
+    --dg-selected: rgba(0, 97, 255, 0.05);
+    --dg-font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --dg-font-mono: 'JetBrains Mono', monospace;
+
+    /* Effects */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 10px;
+
+    /* Theme-specific Overrides for DataGrip look */
+    --dg-toolbar-bg: #f8fafc;
+    --dg-breadcrumb-bg: #ffffff;
+    --dg-input-bg: #ffffff;
+    --dg-text-muted: #64748b;
+
+    /* Badges */
+    --badge-blue-bg: #e0f2fe;
+    --badge-blue-text: #0369a1;
+    --badge-amber-bg: #fef3c7;
+    --badge-amber-text: #92400e;
+}
+
+
+[data-theme="dark"] {
+    --bg-primary: #0f1113;
+    --bg-secondary: #1a1d21;
+    --card-bg: #15181c;
+    --border-main: #2d3136;
+    --text-primary: #f8f9fa;
+    --text-secondary: #adb5bd;
+    --accent-blue: #3d8bff;
+    --accent-blue-soft: rgba(61, 139, 255, 0.15);
+
+    --dg-bg: var(--bg-primary);
+    --dg-card-bg: var(--card-bg);
+    --dg-header-bg: var(--bg-secondary);
+    --dg-border: var(--border-main);
+    --dg-text-main: var(--text-primary);
+    --dg-text-mute: var(--text-secondary);
+    --dg-hover: #212529;
+    --dg-selected: rgba(61, 139, 255, 0.1);
+
+    /* Theme Overrides */
+    --dg-toolbar-bg: var(--bg-secondary);
+    --dg-breadcrumb-bg: var(--bg-secondary);
+    --dg-input-bg: var(--bg-primary);
+    --dg-text-muted: #94a3b8;
+    --dg-input-border: #404b5c;
+
+    /* Badges */
+    --badge-blue-bg: rgba(61, 139, 255, 0.2);
+    --badge-blue-text: #7dd3fc;
+    --badge-amber-bg: rgba(251, 191, 36, 0.2);
+    --badge-amber-text: #fcd34d;
+}

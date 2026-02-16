@@ -1,0 +1,30 @@
+/* ==========================================================================
+   10. Utility & Responsive
+   ========================================================================== */
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center !important;
+}
+
+.text-right {
+    text-align: right !important;
+}
+
+.text-left {
+    text-align: left !important;
+}
+
+@media (max-width: 768px) {
+
+    .dg-brand-group .dg-header-separator,
+    .dg-brand-group .dg-page-title {
+        display: none;
+    }
+
+    .dg-main-content {
+        padding: 1rem;
+    }
+}

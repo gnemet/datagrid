@@ -1,5 +1,6 @@
 {
     "version": "1.2",
+    "title": "Personnel Grid (FontAwesome)",
     "objects": [
         {
             "name": "datagrid.personnel",

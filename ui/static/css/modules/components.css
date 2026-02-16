@@ -1,0 +1,107 @@
+/* ==========================================================================
+   8. Overlay Components (Chooser, Context Menu)
+   ========================================================================== */
+.column-chooser-dropdown {
+    position: absolute;
+    top: 40px;
+    right: 0;
+    background: var(--dg-card-bg);
+    border: 1px solid var(--dg-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    z-index: 100;
+    min-width: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.chooser-item {
+    padding: 6px 16px;
+    transition: background 0.2s;
+}
+
+.chooser-item label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.context-menu {
+    position: fixed;
+    background: var(--dg-card-bg);
+    border: 1px solid var(--dg-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: 6px 0;
+    z-index: 2000;
+    min-width: 180px;
+}
+
+.context-menu-item {
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+}
+
+/* ==========================================================================
+   9. Badges & Additional Components
+   ========================================================================== */
+.dg-badge {
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.dg-badge-blue {
+    background: var(--badge-blue-bg);
+    color: var(--badge-blue-text);
+}
+
+.dg-badge-amber {
+    background: var(--badge-amber-bg);
+    color: var(--badge-amber-text);
+}
+
+
+.dg-pagination-box {
+    background: var(--bg-secondary);
+    padding: 4px;
+    border-radius: 8px;
+    display: flex;
+    gap: 4px;
+}
+
+.dg-btn-icon {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dg-btn-icon:hover {
+    background: var(--dg-accent-light);
+    color: var(--dg-accent);
+}
+
+.dg-separator-v {
+    width: 1px;
+    background: var(--dg-border);
+    margin: 4px 0;
+}

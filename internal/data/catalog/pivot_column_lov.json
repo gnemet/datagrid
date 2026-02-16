@@ -1,0 +1,194 @@
+{
+    "version": "1.0",
+    "title": "Personnel Analytics",
+    "type": "pivot",
+    "icon": "ph-chart-pie-slice",
+    "datagrid": {
+        "title": "Personnel Analytics",
+        "icon": "ph-users-three",
+        "defaults": {
+            "page_size_default": 25,
+            "sort_column": "id",
+            "sort_direction": "desc"
+        },
+        "searchable": {
+            "columns": [
+                "name",
+                "department",
+                "role"
+            ],
+            "operator": "%",
+            "threshold": 0.3
+        },
+        "lovs": {
+            "department": [
+                {
+                    "value": "ENG",
+                    "label": "Engineering"
+                },
+                {
+                    "value": "SALES",
+                    "label": "Sales & Marketing"
+                },
+                {
+                    "value": "HR",
+                    "label": "Human Resources"
+                },
+                {
+                    "value": "OPS",
+                    "label": "Operations"
+                },
+                {
+                    "value": "FIN",
+                    "label": "Finance"
+                },
+                {
+                    "value": "MGT",
+                    "label": "Management"
+                },
+                {
+                    "value": "DSG",
+                    "label": "Design"
+                }
+            ],
+            "role": [
+                {
+                    "value": "SWE",
+                    "label": "Software Engineer"
+                },
+                {
+                    "value": "PM",
+                    "label": "Product Manager"
+                },
+                {
+                    "value": "SALES_REP",
+                    "label": "Sales Representative"
+                },
+                {
+                    "value": "HR_SPEC",
+                    "label": "HR Specialist"
+                },
+                {
+                    "value": "FIN_ANL",
+                    "label": "Financial Analyst"
+                },
+                {
+                    "value": "OPS_MGR",
+                    "label": "Operations Manager"
+                },
+                {
+                    "value": "DSG_UI",
+                    "label": "UI/UX Designer"
+                }
+            ]
+        },
+        "filters": {
+            "department": {
+                "column": "department",
+                "type": "text"
+            },
+            "role": {
+                "column": "role",
+                "type": "text"
+            }
+        },
+        "columns": {
+            "id": {
+                "visible": false
+            },
+            "salary": {
+                "css": "col-currency",
+                "display": "Salary"
+            },
+            "bonus": {
+                "css": "col-currency",
+                "display": "Bonus"
+            },
+            "rating": {
+                "display": "Rating"
+            },
+            "tenure": {
+                "display": "Tenure"
+            },
+            "department": {
+                "display": "Dept",
+                "lov": "department"
+            },
+            "role": {
+                "display": "Role",
+                "lov": "role"
+            }
+        },
+        "pivot": {
+            "rows": [
+                "department"
+            ],
+            "columns": [
+                "role"
+            ],
+            "values": [
+                {
+                    "column": "salary",
+                    "func": "SUM",
+                    "label": "Total Salary"
+                },
+                {
+                    "column": "bonus",
+                    "func": "SUM",
+                    "label": "Total Bonus"
+                },
+                {
+                    "column": "rating",
+                    "func": "AVG",
+                    "label": "Avg Rating"
+                }
+            ],
+            "multiplier": 1.0
+        }
+    },
+    "objects": [
+        {
+            "name": "datagrid.personnel",
+            "table": "personnel",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "integer",
+                    "primary_key": true
+                },
+                {
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "name": "email",
+                    "type": "text"
+                },
+                {
+                    "name": "salary",
+                    "type": "numeric"
+                },
+                {
+                    "name": "bonus",
+                    "type": "numeric"
+                },
+                {
+                    "name": "rating",
+                    "type": "integer"
+                },
+                {
+                    "name": "tenure",
+                    "type": "integer"
+                },
+                {
+                    "name": "department",
+                    "type": "text"
+                },
+                {
+                    "name": "role",
+                    "type": "text"
+                }
+            ]
+        }
+    ]
+}

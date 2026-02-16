@@ -5,7 +5,8 @@
     "type": "object",
     "required": [
         "version",
-        "datagrid"
+        "datagrid",
+        "title"
     ],
     "properties": {
         "version": {
@@ -21,7 +22,11 @@
             "type": "string"
         },
         "type": {
-            "type": "string"
+            "enum": [
+                "grid",
+                "pivot"
+            ],
+            "default": "grid"
         },
         "datagrid": {
             "type": "object",
@@ -189,6 +194,105 @@
                             "default": 0.3
                         }
                     }
+                },
+                "pivot": {
+                    "type": "object",
+                    "properties": {
+                        "rows": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "column": {
+                                                "type": "string"
+                                            },
+                                            "css": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "column"
+                                        ]
+                                    }
+                                ]
+                            }
+                        },
+                        "columns": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "column": {
+                                                "type": "string"
+                                            },
+                                            "css": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "column"
+                                        ]
+                                    }
+                                ]
+                            }
+                        },
+                        "subtotals": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "values": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "column": {
+                                        "type": "string"
+                                    },
+                                    "func": {
+                                        "type": "string",
+                                        "enum": [
+                                            "SUM",
+                                            "AVG",
+                                            "COUNT",
+                                            "COUNT DISTINCT",
+                                            "MIN",
+                                            "MAX"
+                                        ],
+                                        "default": "SUM"
+                                    },
+                                    "label": {
+                                        "type": "string"
+                                    },
+                                    "labels": {
+                                        "$ref": "common.schema.json#/definitions/multi_lang_label"
+                                    }
+                                },
+                                "required": [
+                                    "column",
+                                    "func"
+                                ]
+                            }
+                        },
+                        "multiplier": {
+                            "type": "number",
+                            "default": 1.0
+                        }
+                    },
+                    "required": [
+                        "rows",
+                        "columns",
+                        "values"
+                    ]
                 }
             }
         }

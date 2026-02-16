@@ -1,0 +1,110 @@
+{
+    "version": "1.0",
+    "title": "Personnel & Payroll Pivot",
+    "icon": "ph-chart-bar",
+    "type": "pivot",
+    "datagrid": {
+        "iconStyleLibrary": "Phosphor",
+        "defaults": {
+            "page_size": [
+                10,
+                25,
+                50
+            ],
+            "sort_column": "id",
+            "sort_direction": "desc"
+        },
+        "lovs": {
+            "department": [
+                {
+                    "value": "ENG",
+                    "label": "Engineering"
+                },
+                {
+                    "value": "SALES",
+                    "label": "Sales & Marketing"
+                },
+                {
+                    "value": "HR",
+                    "label": "Human Resources"
+                },
+                {
+                    "value": "OPS",
+                    "label": "Operations"
+                },
+                {
+                    "value": "FIN",
+                    "label": "Finance"
+                },
+                {
+                    "value": "MGT",
+                    "label": "Management"
+                },
+                {
+                    "value": "DSG",
+                    "label": "Design"
+                }
+            ]
+        },
+        "columns": {
+            "id": {
+                "visible": false
+            },
+            "salary": {
+                "css": "col-currency"
+            }
+        },
+        "pivot": {
+            "rows": [
+                "department"
+            ],
+            "columns": [
+                "role"
+            ],
+            "values": [
+                {
+                    "column": "salary",
+                    "func": "SUM",
+                    "label": "Salary Total"
+                },
+                {
+                    "column": "salary",
+                    "func": "MAX",
+                    "label": "Salary Max"
+                }
+            ],
+            "multiplier": 1.0
+        }
+    },
+    "objects": [
+        {
+            "name": "personnel",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "integer"
+                },
+                {
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "name": "department",
+                    "type": "text"
+                },
+                {
+                    "name": "role",
+                    "type": "text"
+                },
+                {
+                    "name": "salary",
+                    "type": "numeric"
+                },
+                {
+                    "name": "hire_date",
+                    "type": "date"
+                }
+            ]
+        }
+    ]
+}

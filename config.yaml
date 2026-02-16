@@ -19,7 +19,8 @@ database:
     default: true
 
 catalog:
-  path: "internal/data/catalog/personnel.json"
+  path: "internal/data/catalog/*.json"
+
 
 cursorpool:
   max_connections: 50

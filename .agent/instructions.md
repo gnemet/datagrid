@@ -17,6 +17,10 @@ This document codifies the mandatory standards for the standalone `datagrid` lib
 ### 3. Catalog-Driven Architecture
 - **Metadata First**: Grid structure, labels, and LOVs (List of Values) MUST be driven by JSON catalogs.
 - **I18n Compliance**: Labels must support multi-language objects (e.g., `{"en": "...", "hu": "..."}`).
+### 4. Strict Backward Compatibility (Additive Only)
+- **Library First**: Datagrid is a library consumed by external projects. Stability is the highest priority.
+- **Additive Evolution**: New features MUST be strictly additive. Do not modify or remove existing public APIs, JSON schema properties, or established CSS classes.
+- **No Breaking Changes**: If a behavior must be changed, introduce it as a new, optional opt-in feature while keeping the original behavior as the default.
 
 ---
 

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gnemet/datagrid"
 	"github.com/gnemet/datagrid/database/cursorpool"
-	"github.com/gnemet/datagrid/pkg/datagrid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"gopkg.in/yaml.v3"

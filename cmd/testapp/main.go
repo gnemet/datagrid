@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+
 	"html/template"
 	"log"
 	"net/http"
@@ -10,7 +12,7 @@ import (
 
 	"strings"
 
-	"github.com/gnemet/datagrid/pkg/datagrid"
+	"github.com/gnemet/datagrid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"gopkg.in/yaml.v3"
@@ -18,10 +20,12 @@ import (
 
 type Config struct {
 	Application struct {
-		Name    string `yaml:"name"`
-		Version string `yaml:"version"`
-		Author  string `yaml:"author"`
+		Name                string `yaml:"name"`
+		Version             string `yaml:"version"`
+		Author              string `yaml:"author"`
+		LOVChooserThreshold int    `yaml:"lov_chooser_threshold"`
 	} `yaml:"application"`
+
 	Server struct {
 		Port string `yaml:"port"`
 	} `yaml:"server"`
@@ -99,19 +103,45 @@ func main() {
 	funcMap := datagrid.TemplateFuncs()
 	funcMap["T"] = func(s string) string { return s } // Dummy T function
 
-	tmpl = template.Must(template.New("main").Funcs(funcMap).ParseGlob("pkg/datagrid/ui/templates/partials/datagrid/*.html"))
-	tmpl = template.Must(tmpl.ParseFiles("pkg/datagrid/ui/templates/index.html"))
+	tmpl = template.Must(template.New("main").Funcs(funcMap).ParseGlob("ui/templates/partials/datagrid/*.html"))
+	tmpl = template.Must(tmpl.ParseFiles("ui/templates/index.html", "ui/templates/header.html", "ui/templates/footer.html"))
 
-	// Datagrid Setup (Using Catalog from Config)
-	gridHandler, err := datagrid.NewHandlerFromCatalog(db, cfg.Catalog.Path, "en")
-	if err != nil {
-		log.Fatalf("Failed to initialize handler from catalog: %v", err)
+	// Catalog Discovery
+	catalogs := make(map[string]string) // name -> title
+	catFiles, _ := os.ReadDir("internal/data/catalog")
+	for _, f := range catFiles {
+		if strings.HasSuffix(f.Name(), ".json") {
+			name := strings.TrimSuffix(f.Name(), ".json")
+			// Try to read title from JSON
+			content, _ := os.ReadFile("internal/data/catalog/" + f.Name())
+			var c struct {
+				Title string `json:"title"`
+			}
+			json.Unmarshal(content, &c)
+			if c.Title == "" {
+				c.Title = name
+			}
+			catalogs[name] = c.Title
+		}
 	}
 
 	// Routes
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("pkg/datagrid/ui/static"))))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("ui/static"))))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		catParam := r.URL.Query().Get("config")
+		if catParam == "" {
+			catParam = "personnel" // Default
+		}
+
+		catPath := fmt.Sprintf("internal/data/catalog/%s.json", catParam)
+		gridHandler, err := datagrid.NewHandlerFromCatalog(db, catPath, "en")
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to load catalog %s: %v", catParam, err), http.StatusInternalServerError)
+			return
+		}
+		gridHandler.LOVChooserThreshold = cfg.Application.LOVChooserThreshold
+
 		hasJsonColumn := false
 		for _, col := range gridHandler.Columns {
 			if strings.Contains(strings.ToLower(col.Type), "json") {
@@ -126,7 +156,7 @@ func main() {
 				"Version": cfg.Application.Version,
 				"Author":  cfg.Application.Author,
 			},
-			"Title":            "Personnel Records", // Specific page title
+			"Title":            gridHandler.Catalog.Title,
 			"ListEndpoint":     "/list",
 			"Limit":            10,
 			"Offset":           0,
@@ -136,20 +166,67 @@ func main() {
 			"IconStyleLibrary": strings.TrimSpace(gridHandler.IconStyleLibrary),
 			"IsPhosphor":       strings.Contains(strings.ToLower(gridHandler.IconStyleLibrary), "phosphor"),
 			"HasJSONColumn":    hasJsonColumn,
+			"PivotEndpoint":    "/pivot",
+			"ViewMode":         gridHandler.Catalog.Type, // Use catalog type as default mode
+			"Catalogs":         catalogs,
+
+			"CurrentCatalog":      catParam,
+			"LOVChooserThreshold": cfg.Application.LOVChooserThreshold,
 		}
+
 		tmpl.ExecuteTemplate(w, "index.html", data)
 	})
 
 	http.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
-		gridHandler.ListEndpoint = "/list"
-		params := gridHandler.ParseParams(r)
-		result, err := gridHandler.FetchData(params)
+		catParam := r.URL.Query().Get("config")
+		if catParam == "" {
+			catParam = "personnel"
+		}
+		catPath := fmt.Sprintf("internal/data/catalog/%s.json", catParam)
+		gridHandler, err := datagrid.NewHandlerFromCatalog(db, catPath, "en")
 		if err != nil {
-			log.Printf("FetchData error: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("Error loading catalog %s: %v", catParam, err)
+			http.Error(w, fmt.Sprintf("Error loading catalog: %v", err), http.StatusInternalServerError)
 			return
 		}
-		tmpl.ExecuteTemplate(w, "datagrid_table", result)
+		gridHandler.LOVChooserThreshold = cfg.Application.LOVChooserThreshold
+		gridHandler.ListEndpoint = "/list?config=" + catParam
+		gridHandler.PivotEndpoint = "/pivot?config=" + catParam
+		gridHandler.AppName = "Personnel Analytics"
+		gridHandler.Catalogs = map[string]string{
+			"personnel":        "Personnel & Payroll",
+			"pivot_demo":       "Personnel & Payroll Pivot",
+			"pivot_column_lov": "Personnel Analytics",
+			"pivot_multi_test": "Personnel Analytics & Pivot",
+		}
+		gridHandler.ServeHTTP(w, r)
+
+	})
+
+	http.HandleFunc("/pivot", func(w http.ResponseWriter, r *http.Request) {
+		catParam := r.URL.Query().Get("config")
+		if catParam == "" {
+			catParam = "personnel"
+		}
+		catPath := fmt.Sprintf("internal/data/catalog/%s.json", catParam)
+		gridHandler, err := datagrid.NewHandlerFromCatalog(db, catPath, "en")
+		if err != nil {
+			log.Printf("Error loading catalog %s: %v", catParam, err)
+			http.Error(w, fmt.Sprintf("Error loading catalog: %v", err), http.StatusInternalServerError)
+			return
+		}
+		gridHandler.LOVChooserThreshold = cfg.Application.LOVChooserThreshold
+		gridHandler.ListEndpoint = "/list?config=" + catParam
+		gridHandler.PivotEndpoint = "/pivot?config=" + catParam
+		gridHandler.AppName = "Personnel Analytics"
+		gridHandler.Catalogs = map[string]string{
+			"personnel":        "Personnel & Payroll",
+			"pivot_demo":       "Personnel & Payroll Pivot",
+			"pivot_column_lov": "Personnel Analytics",
+			"pivot_multi_test": "Personnel Analytics & Pivot",
+		}
+		gridHandler.ServeHTTP(w, r)
+
 	})
 
 	fmt.Printf("Server starting at http://localhost:%s\n", cfg.Server.Port)

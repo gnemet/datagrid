@@ -24,25 +24,8 @@
 </head>
 
 <body class="dg-page-body">
-    <header class="dg-main-header">
-        <div class="dg-header-content">
-            <div class="dg-brand-group">
-                <span class="dg-brand-name">{{.App.Name}}</span>
-                <span class="dg-header-separator">|</span>
-                <span class="dg-page-title">{{.Title}}</span>
-            </div>
+    {{template "header" .}}
 
-            <div class="dg-header-actions">
-                <button class="dg-header-btn loop-selector" data-action="switch-lang" data-langs='{{.LangsJSON}}'
-                    data-current="{{.CurrentLang}}" title="Switch Language">
-                    <i class="{{if .IsPhosphor}}ph ph-globe{{else}}fas fa-globe{{end}}"></i>
-                </button>
-                <button class="dg-header-btn loop-selector" data-action="switch-theme" title="Toggle Theme">
-                    <i class="{{if .IsPhosphor}}ph ph-moon{{else}}fas fa-moon{{end}}"></i>
-                </button>
-            </div>
-        </div>
-    </header>
 
     <main class="dg-main-content">
         <div class="dg-card-container">
@@ -50,19 +33,20 @@
         </div>
     </main>
 
-    <footer class="dg-main-footer">
-        <div class="dg-footer-content">
-            <div class="dg-footer-left">
-                <span class="dg-footer-item">© 2026 {{.App.Author}}</span>
-            </div>
-            <div class="dg-footer-right">
-                <span class="dg-footer-version">v{{.App.Version}}</span>
-                <span class="dg-footer-engine">Antigravity Engine</span>
-            </div>
-        </div>
-    </footer>
+    {{template "footer" .}}
 
-    <script src="/static/js/datagrid.js"></script>
+
+    <script src="/static/js/modules/settings.js"></script>
+    <script src="/static/js/modules/grid.js"></script>
+    <script src="/static/js/modules/filters.js"></script>
+    <script src="/static/js/modules/detail.js"></script>
+    <script src="/static/js/modules/core.js"></script>
+    <script src="/static/js/pivot.js"></script>
+
+    <script>
+        // Set context for settings
+        window.datagridResource = '{{.CurrentCatalog}}';
+    </script>
 </body>
 
 </html>

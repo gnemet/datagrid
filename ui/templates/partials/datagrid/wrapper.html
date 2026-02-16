@@ -1,9 +1,10 @@
 {{define "datagrid_wrapper"}}
-<div class="datagrid-wrapper">
+<div class="datagrid-wrapper {{if eq .ViewMode " pivot"}}dg-pivot-mode{{end}}">
+
     <div class="resource-toolbar">
         <div class="dg-breadcrumb-bar">
             <div class="dg-bc-item">
-                <span>{{.Title}}</span>
+                <span>Resource</span>
             </div>
             <div class="dg-bc-separator"><i
                     class="{{if .IsPhosphor}}ph ph-caret-right{{else}}fas fa-chevron-right{{end}}"></i></div>
@@ -12,48 +13,119 @@
                 <span>{{.Title}}</span>
             </div>
         </div>
+
         <div class="datagrid-toolbar">
             <div class="left-controls">
                 <div class="search-wrapper">
                     <i class="{{if .IsPhosphor}}ph ph-magnifying-glass{{else}}fas fa-search{{end}}"></i>
                     <input type="text" name="search" class="search-input" placeholder="Search..."
-                        hx-get="{{.ListEndpoint}}" hx-target="#datagrid-container"
-                        hx-trigger="keyup changed delay:300ms, search"
-                        hx-include=".search-input, #datagrid-filter-form, .dg-select">
+                        hx-get="{{if eq .ViewMode " pivot"}}{{.PivotEndpoint}}{{else}}{{.ListEndpoint}}{{end}}"
+                        hx-target="#datagrid-main-view" hx-trigger="keyup changed delay:300ms, search"
+                        hx-include=".search-input, #datagrid-filter-form, .dg-select, [name='mode'], [name='config']">
                 </div>
 
+
+
                 <div class="filter-group-container">
-                    {{range .UIColumns}}
+                    {{range $col := .UIColumns}}
                     {{if .LOV}}
                     <div class="filter-group" data-field="{{.Field}}">
-                        <span class="filter-label">{{.Label}}</span>
-                        <select name="{{.Field}}" hx-get="{{$.ListEndpoint}}" hx-target="#datagrid-container"
-                            hx-include=".search-input, #datagrid-filter-form, .dg-select" class="dg-select">
-                            <option value="">All</option>
-                            {{range .LOV}}
-                            <option value="{{.Value}}">{{.Label}}</option>
+                        <span class="filter-label">
+                            {{if eq $.ViewMode "pivot"}}
+                            {{if .IsPivotRow}}<i class="ph-rows" title="Row Filter"></i>{{end}}
+                            {{if .IsPivotCol}}<i class="ph-columns" title="Column Filter"></i>{{end}}
                             {{end}}
-                        </select>
+                            {{.Label}}
+                        </span>
+
+
+                        {{if (gt (len .LOV) $.LOVChooserThreshold)}}
+
+                        <div class="dg-dropdown" data-field="{{.Field}}">
+                            <button type="button" class="dg-dropdown-trigger" onclick="dgToggleDropdown(this)">
+                                <i class="ph-list-checks"></i>
+                                <span>{{.Label}}</span>
+                                <i class="ph-caret-down"></i>
+                            </button>
+                            <div class="dg-dropdown-content">
+                                {{range .LOV}}
+                                <label class="dg-dropdown-item">
+                                    <input type="checkbox" value="{{.Value}}" checked
+                                        onchange="dgCheckboxFilterUpdate(this, '{{$col.Field}}')">
+                                    <span>{{.Label}}</span>
+                                </label>
+                                {{end}}
+                            </div>
+                        </div>
+                        {{else}}
+                        <div class="dg-toggle-group" data-field="{{.Field}}">
+                            {{range .LOV}}
+                            <button type="button" class="dg-toggle-btn active" data-value="{{.Value}}"
+                                onclick="dgToggleFilter(this, '{{$col.Field}}')">
+                                {{.Label}}
+                            </button>
+                            {{end}}
+                        </div>
+                        {{end}}
                     </div>
+
                     {{end}}
                     {{end}}
                 </div>
+
+
+
+
+
             </div>
 
             <div class="right-controls column-chooser-wrapper">
+                <div class="dg-mode-switcher">
+                    <button class="dg-btn-icon" hx-get="{{.ListEndpoint}}" hx-target="#datagrid-main-view"
+                        hx-include="[name='config'], #datagrid-filter-form, .search-input" hx-vals='{"mode": "grid"}'
+                        title="Grid View">
+                        <i class="{{if .IsPhosphor}}ph ph-table{{else}}fas fa-table{{end}}"></i>
+                    </button>
+
+
+                    <button class="dg-btn-icon" hx-get="{{.PivotEndpoint}}" hx-target="#datagrid-main-view"
+                        hx-include="[name='config'], #datagrid-filter-form, .search-input" hx-vals='{"mode": "pivot"}'
+                        title="Pivot View">
+
+                        <i class="{{if .IsPhosphor}}ph ph-chart-bar{{else}}fas fa-chart-bar{{end}}"></i>
+                    </button>
+
+                </div>
+
+                {{if ne .ViewMode "pivot"}}
                 {{if .HasJSONColumn}}
+
                 <button class="dg-btn-icon" id="expand-keys-btn" title="Expand JSON Keys">
                     <i class="{{if .IsPhosphor}}ph ph-corners-out{{else}}fas fa-expand{{end}}"></i>
                 </button>
                 {{end}}
+                {{end}}
+
                 <button class="dg-btn-icon" id="toggle-sidebar-btn" title="Toggle Detail Panel">
                     <i class="{{if .IsPhosphor}}ph ph-identification-card{{else}}fas fa-id-card{{end}}"></i>
                 </button>
+                {{if eq .ViewMode "pivot"}}
+                <button class="dg-btn-icon" hx-get="{{.PivotEndpoint}}" hx-target="#datagrid-main-view"
+                    hx-include="[name='config'], #datagrid-filter-form, .search-input"
+                    hx-vals='{"mode": "pivot", "swap": "true"}' title="Swap Rows/Columns">
+                    <i class="{{if .IsPhosphor}}ph ph-arrows-left-right{{else}}fas fa-exchange-alt{{end}}"></i>
+                </button>
+                {{end}}
+                {{if ne .ViewMode "pivot"}}
                 <button class="dg-btn-icon" id="column-chooser-btn" title="Choose Columns">
                     <i class="{{if .IsPhosphor}}ph ph-columns{{else}}fas fa-columns{{end}}"></i>
                 </button>
                 <div id="column-chooser-dropdown" class="column-chooser-dropdown hidden"></div>
+                {{end}}
 
+
+
+                {{if ne .ViewMode "pivot"}}
                 <div class="pagination-controls">
                     <button class="dg-btn-icon" id="prev-page-btn" title="Previous Page">
                         <i class="{{if .IsPhosphor}}ph ph-caret-left{{else}}fas fa-chevron-left{{end}}"></i>
@@ -63,19 +135,33 @@
                         <i class="{{if .IsPhosphor}}ph ph-caret-right{{else}}fas fa-chevron-right{{end}}"></i>
                     </button>
                 </div>
+                {{end}}
+
             </div>
         </div>
 
-        <form id="datagrid-filter-form" class="hidden" hx-get="{{.ListEndpoint}}" hx-target="#datagrid-container"
-            hx-trigger="submit" hx-include=".search-input, .dg-select">
+        <form id="datagrid-filter-form" class="hidden" hx-get="{{.ListEndpoint}}" hx-target="#datagrid-main-view"
+            hx-trigger="submit" hx-include=".search-input, .dg-select, [name='mode'], [name='config']">
+
             <input type="hidden" name="limit" id="limit-input" value="{{.Limit}}">
             <input type="hidden" name="offset" id="offset-input" value="{{.Offset}}">
+            <input type="hidden" name="mode" id="mode-input" value="{{.ViewMode}}">
+            <input type="hidden" name="config" value="{{.CurrentCatalog}}">
         </form>
+
+
     </div>
 
     <div class="grid-main-layout">
-        <div id="datagrid-container" class="dg-grid-container" hx-get="{{.ListEndpoint}}" hx-trigger="load"
-            hx-include=".search-input, #datagrid-filter-form, .dg-select">
+        <div id="datagrid-main-view" class="dg-grid-container"
+            hx-get="{{if eq .ViewMode `pivot`}}{{.PivotEndpoint}}?mode=pivot{{else}}{{.ListEndpoint}}?mode=grid{{end}}"
+            hx-trigger="load" hx-include=".search-input, #datagrid-filter-form, .dg-select, [name='config']">
+
+
+
+
+
+
             <div class="loading-state">
                 <i class="{{if .IsPhosphor}}ph ph-circle-notched ph-spin{{else}}fas fa-spinner fa-spin{{end}}"></i>
                 Loading...

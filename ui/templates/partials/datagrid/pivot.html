@@ -1,0 +1,80 @@
+{{define "datagrid_pivot"}}
+<div class="datagrid-pivot-container dg-pivot-mode" id="dg-pivot-wrapper">
+    <table class="datagrid-table pivot-table">
+        <thead>
+            {{ $numMeasures := len .PivotResult.Measures }}
+            <!-- Level 1 Header: Dimensions -->
+            <tr>
+                <th class="pivot-dim-header" rowspan="2">
+                    {{ range .Config.Pivot.Rows }}
+                    <span class="{{ index $.PivotResult.DimensionCSS .Column }}">{{ index $.PivotResult.DisplayLabels
+                        .Column }}</span>
+                    {{ if not (eq . (index $.Config.Pivot.Rows (sub (len $.Config.Pivot.Rows) 1))) }} / {{ end }}
+                    {{ end }}
+                </th>
+
+
+                {{ range .PivotResult.Cols }}
+                <th class="pivot-col-header" colspan="{{ $numMeasures }}">{{.}}</th>
+                {{ end }}
+                <th class="pivot-total-header" colspan="{{ $numMeasures }}">Total</th>
+            </tr>
+            <!-- Level 2 Header: Measures -->
+            <tr>
+                {{ range .PivotResult.Cols }}
+                {{ range $.PivotResult.Measures }}
+                <th class="pivot-measure-header">{{ . }}</th>
+                {{ end }}
+                {{ end }}
+                {{ range .PivotResult.Measures }}
+                <th class="pivot-measure-header">{{ . }}</th>
+                {{ end }}
+            </tr>
+        </thead>
+        <tbody>
+            {{ $res := .PivotResult }}
+            {{ range $rKey := $res.Rows }}
+            <tr>
+                <td class="pivot-row-key">{{ $rKey }}</td>
+                {{ range $cKey := $res.Cols }}
+                {{ range $mKey := $res.Measures }}
+                <td class="col-number">
+                    {{ formatNum (index (index (index $res.Data $rKey) $cKey) $mKey) }}
+                </td>
+
+
+                {{ end }}
+                {{ end }}
+                <!-- Row Totals -->
+                {{ range $mKey := $res.Measures }}
+                <td class="col-number pivot-row-total">
+                    {{ formatNum (index (index $res.RowTotals $rKey) $mKey) }}
+                </td>
+
+                {{ end }}
+            </tr>
+            {{ end }}
+        </tbody>
+        <tfoot>
+            <tr class="pivot-grand-total-row">
+                <td class="pivot-footer-label">Grand Total</td>
+                {{ range $cKey := .PivotResult.Cols }}
+                {{ range $mKey := $.PivotResult.Measures }}
+                <td class="col-number">
+                    {{ formatNum (index (index $.PivotResult.ColTotals $cKey) $mKey) }}
+                </td>
+
+                {{ end }}
+                {{ end }}
+                <!-- Grand Totals per Measure -->
+                {{ range $mKey := .PivotResult.Measures }}
+                <td class="col-number pivot-grand-total">
+                    {{ formatNum (index $.PivotResult.GrandTotal $mKey) }}
+                </td>
+
+                {{ end }}
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{{end}}

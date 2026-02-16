@@ -1,5 +1,7 @@
 {
     "version": "1.2",
+    "title": "Standard Personnel Grid",
+    "type": "grid",
     "objects": [
         {
             "name": "datagrid.personnel",
