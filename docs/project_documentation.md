@@ -1,84 +1,133 @@
 # Project Documentation: datagrid
 
 ## Overview
-`datagrid` is a high-performance Go-based table component with advanced metadata-driven UI capabilities, supporting multi-sort, column-chooser, and directional server-side pagination via PostgreSQL cursors.
+`datagrid` is a high-performance, metadata-driven UI component library for Go. It enables rapid development of advanced data tables and analytical pivots by consolidating SQL generation logic in Go and offloading execution to optimized PostgreSQL streaming functions.
 
-## Source of Truth
-This document is the primary reference for all project features and architectural decisions.
+## Technology Stack
 
-## Architecture & Blueprint
+The project leverages a modern, lean, and high-performance stack:
 
-### CursorPool Implementation (v1.5.1)
-The `CursorPool` manages database sessions and `refcursor` life-cycles.
-- **Tuning**: Configurable `max_connections`, `idle_timeout`, and `abs_timeout`.
-- **Capacity**: Explicit limits to prevent session exhaustion.
-- **Branding**: Displays `REFCURSOR MODE` and `SCROLLABLE CURSOR ACTIVE` indicators when active.
+| Layer | Technology | Role |
+| :--- | :--- | :--- |
+| **Backend** | **Go (Golang)** | Core logic, SQL template rendering, and HTTP handling. |
+| **Database** | **PostgreSQL** | Optimized execution wrappers, specialized JSONB/CSV streaming, and stateful cursor management. |
+| **Frontend** | **HTMX** | Facilitates seamless AJAX-based partial updates without complex JavaScript frameworks. |
+| **Styling** | **Vanilla CSS** | Modern CSS3 with Flexbox/Grid for layout, using a "Glassmorphism" aesthetic. |
+| **Icons** | **Phosphor / FA** | Supports Phosphor Icons (primary) and FontAwesome (legacy/fallback). |
+| **Templating** | **Go Templates** | Used for both HTML UI partials and server-side SQL generation. |
 
-### Standard Connection Mode (Connectless)
-The classic stateless connection method for base implementations.
-- **Mechanism**: Direct SQL query execution with `LIMIT`/`OFFSET` for pagination.
-- **Indicators**: Displays `Standard Connect Mode` in the UI to distinguish from stateful cursor sessions.
-- **Use Case**: Preferred for stateless API integrations and environments where persistent database cursors are not required.
+## Data Visualization Modes
 
-### Technical Implementation Details (v1.5.1)
+### 📊 Data Grid (Default)
+The standard view for record browsing and management.
+- **Features**: Multi-column sorting, advanced filtering, column chooser, and detail sidebar.
+- **Paging**: Supports both offset-based and directional cursor-based navigation.
 
-#### 📄 Pagination & PageSize Logic
-The system uses a hierarchical resolution for determining the result set size:
-1.  **Request Parameter**: The `limit` query parameter (if provided) has the highest priority.
-2.  **Catalog Defaults**: If no parameter is present, the handler falls back to `cat.Datagrid.Defaults.PageSizes[0]`.
-3.  **Internal Helper**: The system populates a `PageSize` helper at initialization for template rendering.
+### 🔄 Pivot Table
+An analytical mode for data aggregation and cross-tabulation.
+- **Dimensions**: Configurable row and column dimensions.
+- **Measures**: Support for multiple aggregations (SUM, AVG, COUNT, etc.).
+- **Interactivity**: Support for dimension swapping and subtotal toggling.
 
-#### 📋 List of Values (LOVs)
-LOVs drive both UI dropdowns and server-side filter validation:
-- **Global vs. Local**: Supports global definitions in `datagrid.lovs` and per-column overrides.
-- **Dynamic SQL**: SQL strings in the catalog are executed at runtime. The placeholder `{lang}` is automatically replaced with the active session language.
-- **Static Lists**: Localized JSON objects providing fixed value/label mappings.
-- **Processing**: Labels are resolved at handler initialization based on the user's `lang` or the English fallback.
+### 📈 Future Roadmap: Graphs
+Upcoming versions will include integrated charting (Bar, Line, Pie) directly derived from Pivot/Grid datasets, leveraging the same streaming architecture.
 
-#### 🔍 Configuration & Filtering
-- **Filter Inference**: The system automatically infers filter types (`text`, `number`, `boolean`, `int_bool`) from the underlying column metadata if not explicitly defined.
-- **Dynamic JSON Sorting**: Support for `dyn-` prefix (e.g., `dyn-data.role`) which is translated to PostgreSQL JSONB operators (`->>`) at runtime.
-- **Schema Isolation**: Datagrid logic is isolated from MCP extensions via separate schema validation in `internal/data/schemas/`.
+## SQL & Execution Modes
 
-### Hybrid SQL Execution Mode (Experimental)
-The system supports a high-performance, secure hybrid SQL generation and execution model.
-- **Architecture**: Go templates (`grid.sql.tmpl`, `pivot.sql.tmpl`) define the SQL structure, while data access is handled via a parameterized PostgreSQL function (`datagrid_execute_json`) using a JSONB payload.
-- **Type Safety**:
-    - **Native Type Preservation**: LOV codes and filter values preserve their native JSON types (boolean, numeric) from the backend to the database.
-    - **Dynamic Casting**: SQL templates automatically apply PostgreSQL casts (`::boolean`, `::numeric`) based on column metadata flags to ensure type-safe JOINs and filtering.
-- **Security**: Prevent SQL injection by using parameterized queries ($1) and `quote_ident` for table/column names.
-- **Indicators**: Displays `Hybrid SQL Active` when `EXPERIMENTAL_SQL_TEMPLATES=true` is set.
-- **Optimized Export**: The `datagrid_execute_csv` function uses `row_to_json` for robust, high-performance CSV generation.
+The project standardizes on a **Unified Hybrid SQL** model. SQL is generated via Go templates (`grid.sql.tmpl`) and executed through Postgres wrappers.
 
-### UI Integration Standards
-- **Icons**: Supports both **FontAwesome** (`fas`) and **Phosphor** (`ph`) icon libraries.
-    - **Configuration**: Set `iconStyleLibrary` to `"Phosphor"` or `"FontAwesome"` (default) in the catalog's `datagrid` section.
-    - **Asset Loading**: Templates automatically toggle between FontAwesome (CDN) and Phosphor (local vendor) based on this setting.
-    - **Class Handling**: The engine automatically prefixes icon names if the library prefix is missing, ensuring resilience.
-- **Navigation**: Uses directional pagination (FIRST, PRIOR, NEXT, LAST).
-- **Aesthetics**: Adopts premium breadcrumb-style headers and glassmorphism-inspired components.
+### 1. Normal (Connectless) Mode
+The stateless connection method, ideal for scalable APIs.
+- **Mechanism**: Direct execution of generated SQL using `$1` (JSONB configuration) and `$2` (Parameters).
+- **Pagination**: Uses `LIMIT` and `OFFSET`.
 
-## Work Log & Feature History
+### 2. Cursor (Stateful) Mode
+Optimized for high-concurrency and large datasets where consistent navigation is required.
+- **Mechanism**: Utilizes `CursorPool` to manage `refcursor` life-cycles.
+- **Stability**: Prevents deep-paging performance degradation by maintaining server-side state.
+- **Indicators**: UI displays `SCROLLABLE CURSOR ACTIVE` when in this mode.
 
-### Feb 2026 - Johanna Integration & CursorPool
-- **Professionalization**: Enhanced `CursorPool` for production readiness.
-- **Documentation**: Adopted the Johanna documentation method with this centralized file.
-- **Rules**: Enforced professional development rules via `.agent/rules.md`.
-- **Versioning**: Implemented automatic semantic versioning (Current: `1.5.1`).
-- **Modernization**: Updated `CursorApp` with premium breadcrumbs and indicators while maintaining FontAwesome compatibility.
-- **Structural Integrity**: Migrated core logic to `pkg/datagrid/` to restore external importability (Standard Go Library pattern).
-- **Schema Consolidation**: Grouped JSON schemas in `internal/data/schemas/` and isolated MCP keys from Datagrid logic.
-- **Rule Enforcement**: Strictly applied the **No-Inline Style** policy and implemented a **Forensic DOM** with `data-sort` and `data-row-style` attributes for state auditability.
-- **DWH Compatibility**: Enhanced identifier detection to automatically support `sid` (Session/Record ID) alongside standard `id` and primary keys.
-- **Security Lockdown**: Established AI access restrictions via `.antigravityignore`, blocking sensitive environment variables, private keys, and local credentials.
+## Datagrid JSON Format (Catalog)
 
-## Usage Guide
-### Running CursorApp
-```bash
-DB_MODE=refcursor DB_PORT=5433 DB_USER=root DB_PASSWORD=soa123 DB_NAME=db01 DB_SCHEMA=datagrid go run cmd/cursorapp/main.go
+The system is driven by a metadata `Catalog` defined in JSON.
+
+### Catalog Structure
+```json
+{
+  "version": "1.5.2",
+  "title": "Personnel Analytics",
+  "type": "pivot",
+  "datagrid": {
+    "defaults": {
+      "page_size_default": 25,
+      "page_size": [10, 25, 50, 100],
+      "sort_column": "id",
+      "sort_direction": "desc"
+    },
+    "searchable": {
+      "columns": ["name", "department", "role"],
+      "operator": "%",
+      "threshold": 0.3
+    },
+    "columns": {
+      "id": { "visible": false },
+      "salary": { "css": "col-currency", "display": "Salary" },
+      "department": { "display": "Dept", "lov": "department" }
+    },
+    "pivot": {
+      "rows": [{ "column": "department", "css": "dg-dim-dept" }],
+      "columns": [{ "column": "gender" }],
+      "values": [{ "column": "salary", "func": "SUM", "label": "Total Salary" }],
+      "subtotals": true
+    }
+  },
+  "objects": [
+    {
+      "name": "personnel",
+      "columns": [
+        { "name": "id", "type": "integer", "primary_key": true },
+        { "name": "name", "type": "text" }
+      ]
+    }
+  ]
+}
 ```
-The app will be available at `http://localhost:8089`.
+
+### Key Configuration Objects
+
+#### `defaults`
+- **`page_size_default`**: The initial number of records per page.
+- **`page_size`**: Array of available page size options for the UI.
+- **`sort_column` / `sort_direction`**: Initial sort state.
+
+#### `searchable`
+- **`columns`**: List of columns included in the global search.
+- **`operator`**: PostgreSQL operator for search (e.g., `%` for similarity, `ILIKE` for patterns).
+- **`threshold`**: Similarity threshold for the `%` operator.
+
+#### `columns` (Overrides)
+- **`visible`**: Boolean to show/hide column.
+- **`css`**: Custom CSS classes added to the column cells.
+- **`lov`**: Reference to a global LOV or an inline definition.
+
+#### `lovs` (Global LOVs)
+- **Static**: Array of value/label pairs. Includes `rowStyle` and `rowClass` for conditional formatting.
+- **Dynamic**: A SQL string (containing `{lang}`) that returns `code` and `label`.
+
+#### `pivot`
+- **`rows` / `columns`**: Dimensions for the pivot grid. Can include `css` for custom styling.
+- **`values`**: Aggregated measures. Requires a column and a function (`SUM`, `AVG`, `MIN`, `MAX`, `COUNT`).
+- **`subtotals`**: Boolean to enable/disable row/column subtotals.
+
+#### `operations`
+- **`add` / `edit` / `delete`**: Booleans to enable/disable UI actions for record management.
+
+## Streaming Architecture
+
+To maximize memory efficiency, the system avoids loading entire result sets into Go memory.
+- **JSON Streaming**: PostgreSQL `datagrid_execute_json` returns `SETOF jsonb`, processed row-by-row in Go.
+- **CSV Streaming**: `datagrid_execute_csv` generates formatted CSV lines in the database, streamed directly to the HTTP response writer.
 
 ## Verification Status
-- **Automated**: Verified connection pool tuning and config parsing.
-- **Manual**: UI and pagination verified in `CursorApp` (v1.5.1).
+- **Automated**: Full coverage of SQL generation and alphabetical CSV column sorting.
+- **Manual**: Verified in `testapp` (Stateless) and `cursorapp` (Stateful).

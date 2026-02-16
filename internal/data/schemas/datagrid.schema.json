@@ -22,6 +22,7 @@
             "type": "string"
         },
         "type": {
+            "description": "Primary display mode for the catalog data",
             "enum": [
                 "grid",
                 "pivot"
@@ -30,29 +31,36 @@
         },
         "datagrid": {
             "type": "object",
+            "description": "Core datagrid and pivot visualization settings",
             "required": [
                 "columns"
             ],
             "properties": {
                 "iconStyleLibrary": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Icon library used in templates (e.g., 'Phosphor' or 'FontAwesome'). Defaults to 'FontAwesome'."
                 },
                 "operations": {
                     "type": "object",
+                    "description": "Enablement of CRUD UI operations",
                     "properties": {
                         "add": {
-                            "type": "boolean"
+                            "type": "boolean",
+                            "description": "Enable the 'Add Record' button"
                         },
                         "edit": {
-                            "type": "boolean"
+                            "type": "boolean",
+                            "description": "Enable row-level editing"
                         },
                         "delete": {
-                            "type": "boolean"
+                            "type": "boolean",
+                            "description": "Enable row-level deletion"
                         }
                     }
                 },
                 "lovs": {
                     "type": "object",
+                    "description": "Global List of Values definitions indexed by field name",
                     "additionalProperties": {
                         "type": "array",
                         "items": {
@@ -62,15 +70,18 @@
                 },
                 "defaults": {
                     "type": "object",
+                    "description": "Initial state for the grid on first load",
                     "properties": {
                         "page_size_default": {
-                            "type": "integer"
+                            "type": "integer",
+                            "description": "The default number of records per page"
                         },
                         "page_size": {
                             "type": "array",
                             "items": {
                                 "type": "integer"
                             },
+                            "description": "Available page size options for the user",
                             "default": [
                                 10,
                                 25,
@@ -79,10 +90,12 @@
                             ]
                         },
                         "sort_column": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "Field name to sort by initially"
                         },
                         "sort_direction": {
                             "type": "string",
+                            "description": "Starting sort direction (e.g., 'asc' or 'desc')",
                             "enum": [
                                 "asc",
                                 "desc",
@@ -97,37 +110,43 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Cyclic row styles (e.g. alternating background colors)"
+                            "description": "Cyclic CSS styles applied to table rows sequentially"
                         },
                         "filters": {
                             "type": "object",
                             "additionalProperties": true,
-                            "description": "Default filter values"
+                            "description": "Initial filter values (field: [value1, ...])"
                         }
                     }
                 },
                 "columns": {
                     "type": "object",
+                    "description": "UI property overrides for table columns",
                     "additionalProperties": {
                         "type": "object",
                         "properties": {
                             "visible": {
-                                "type": "boolean"
+                                "type": "boolean",
+                                "description": "Whether the column is shown by default"
                             },
                             "css": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Custom CSS classes for column cells"
                             },
                             "display": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Label pattern used in headers and tooltips (supports %field% placeholders)"
                             },
                             "labels": {
-                                "$ref": "common.schema.json#/definitions/multi_lang_label"
+                                "$ref": "common.schema.json#/definitions/multi_lang_label",
+                                "description": "Localized column headers"
                             },
                             "icon": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Icon class name displayed next to the label"
                             },
                             "lov": {
-                                "description": "Override LOV definition (string for dynamic SQL, array for static list)",
+                                "description": "Inline LOV definition or reference to global LOV key",
                                 "oneOf": [
                                     {
                                         "type": "string"
@@ -145,14 +164,17 @@
                 },
                 "filters": {
                     "type": "object",
+                    "description": "Filter definitions that enable UI filtering for specific columns",
                     "additionalProperties": {
                         "type": "object",
                         "properties": {
                             "column": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Underlying database column for this filter"
                             },
                             "type": {
                                 "type": "string",
+                                "description": "UI input type for the filter",
                                 "enum": [
                                     "text",
                                     "number",
@@ -166,15 +188,18 @@
                 },
                 "searchable": {
                     "type": "object",
+                    "description": "Global fuzzy search configuration",
                     "properties": {
                         "columns": {
                             "type": "array",
+                            "description": "Columns included in the fuzzy search index",
                             "items": {
                                 "type": "string"
                             }
                         },
                         "operator": {
                             "type": "string",
+                            "description": "PostgreSQL operator (default: % for pg_trgm similarity)",
                             "enum": [
                                 "%",
                                 "~",
@@ -189,6 +214,7 @@
                         },
                         "threshold": {
                             "type": "number",
+                            "description": "Pg_trgm similarity threshold (0.0 to 1.0)",
                             "minimum": 0,
                             "maximum": 1,
                             "default": 0.3
@@ -197,9 +223,11 @@
                 },
                 "pivot": {
                     "type": "object",
+                    "description": "Analytic pivot configuration",
                     "properties": {
                         "rows": {
                             "type": "array",
+                            "description": "Dimensions defining the rows of the pivot grid",
                             "items": {
                                 "oneOf": [
                                     {
@@ -224,6 +252,7 @@
                         },
                         "columns": {
                             "type": "array",
+                            "description": "Dimensions defining the columns of the pivot grid",
                             "items": {
                                 "oneOf": [
                                     {
@@ -248,18 +277,22 @@
                         },
                         "subtotals": {
                             "type": "boolean",
+                            "description": "Enable rendering of intermediate and grand totals",
                             "default": false
                         },
                         "values": {
                             "type": "array",
+                            "description": "Measures for aggregation in the pivot cells",
                             "items": {
                                 "type": "object",
                                 "properties": {
                                     "column": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "description": "Database column to aggregate"
                                     },
                                     "func": {
                                         "type": "string",
+                                        "description": "Aggregation function (e.g., 'SUM', 'AVG')",
                                         "enum": [
                                             "SUM",
                                             "AVG",
@@ -271,10 +304,12 @@
                                         "default": "SUM"
                                     },
                                     "label": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "description": "Header label for this specific measure"
                                     },
                                     "labels": {
-                                        "$ref": "common.schema.json#/definitions/multi_lang_label"
+                                        "$ref": "common.schema.json#/definitions/multi_lang_label",
+                                        "description": "Localized header labels for the measure"
                                     }
                                 },
                                 "required": [
@@ -285,6 +320,7 @@
                         },
                         "multiplier": {
                             "type": "number",
+                            "description": "Global scale factor applied to all numeric values in the pivot results",
                             "default": 1.0
                         }
                     },

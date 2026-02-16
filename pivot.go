@@ -166,103 +166,98 @@ func (h *Handler) PivotData(p RequestParams) (*PivotResult, error) {
 	configJSON, _ := json.Marshal(config)
 
 	// 2. Fetch Records
-	useTemplate := os.Getenv("EXPERIMENTAL_SQL_TEMPLATES") == "true"
-	var recordsJSON string
 
-	if useTemplate {
-		// --- EXPERIMENTAL: Go Template Based Generation ---
-		type DimWrap struct {
-			Source string
-			Column string
-		}
-		type MeasureWrap struct {
-			Func   string
-			Column string
-			Alias  string
-		}
-		type FilterWrap struct {
-			Column    string
-			IsArray   bool
-			IsBoolean bool
-			IsNumber  bool
-			Values    []string
-			Value     string
-		}
-
-		dims := []DimWrap{}
-		for _, d := range dimsDecl {
-			src := "src." + quote_ident(d.Column)
-			if d.IsLOV {
-				src = "lov" + fmt.Sprintf("%d", d.LovIdx) + ".label"
-			}
-			dims = append(dims, DimWrap{Source: src, Column: d.Column})
-		}
-
-		measures := []MeasureWrap{}
-		for _, m := range measuresDecl {
-			measures = append(measures, MeasureWrap{
-				Func:   m.Func,
-				Column: m.Column,
-				Alias:  m.Alias,
-			})
-		}
-
-		filtersWrap := []FilterWrap{}
-		for k, v := range p.Filters {
-			// Skip technical parameters that are not defined as filters in the catalog
-			if _, ok := h.Config.Filters[k]; !ok {
-				continue
-			}
-
-			f := FilterWrap{Column: k}
-			if conf, ok := h.Config.Filters[k]; ok {
-				switch conf.Type {
-				case "boolean":
-					f.IsBoolean = true
-				case "integer", "numeric", "double":
-					f.IsNumber = true
-				}
-			}
-			if len(v) > 1 {
-				f.IsArray = true
-				f.Values = v
-			} else if len(v) == 1 {
-				f.Value = v[0]
-			}
-			filtersWrap = append(filtersWrap, f)
-		}
-
-		tplData := map[string]interface{}{
-			"TableName":  h.TableName,
-			"Dimensions": dims,
-			"Measures":   measures,
-			"LOVs":       lovsDecl,
-			"Filters":    filtersWrap,
-		}
-
-		query, err := h.renderSQL("pivot.sql", tplData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to render pivot SQL template: %w", err)
-		}
-		if os.Getenv("DEBUG_SQL") == "true" {
-			fmt.Printf("--- EXPERIMENTAL PIVOT SQL ---\n%s\n------------------------------\n", query)
-		}
-		err = h.DB.QueryRow("SELECT datagrid.datagrid_execute_json($1, $2)", query, string(configJSON)).Scan(&recordsJSON)
-		if err != nil {
-			return nil, fmt.Errorf("failed to execute pivot template SQL: %w", err)
-		}
-	} else {
-		// --- ESTABLISHED: Database Side Execution ---
-		err := h.DB.QueryRow("SELECT datagrid_execute($1, 'pivot', 'json')", string(configJSON)).Scan(&recordsJSON)
-		if err != nil {
-			return nil, fmt.Errorf("failed to execute pivot data: %w", err)
-		}
+	// --- Hybrid Mode: Go Template Based Generation ---
+	type DimWrap struct {
+		Source string
+		Column string
+	}
+	type MeasureWrap struct {
+		Func   string
+		Column string
+		Alias  string
+	}
+	type FilterWrap struct {
+		Column    string
+		IsArray   bool
+		IsBoolean bool
+		IsNumber  bool
+		Values    []string
+		Value     string
 	}
 
+	dims := []DimWrap{}
+	for _, d := range dimsDecl {
+		src := "src." + quote_ident(d.Column)
+		if d.IsLOV {
+			src = "lov" + fmt.Sprintf("%d", d.LovIdx) + ".label"
+		}
+		dims = append(dims, DimWrap{Source: src, Column: d.Column})
+	}
+
+	measures := []MeasureWrap{}
+	for _, m := range measuresDecl {
+		measures = append(measures, MeasureWrap{
+			Func:   m.Func,
+			Column: m.Column,
+			Alias:  m.Alias,
+		})
+	}
+
+	filtersWrap := []FilterWrap{}
+	for k, v := range p.Filters {
+		// Skip technical parameters that are not defined as filters in the catalog
+		if _, ok := h.Config.Filters[k]; !ok {
+			continue
+		}
+
+		f := FilterWrap{Column: k}
+		if conf, ok := h.Config.Filters[k]; ok {
+			switch conf.Type {
+			case "boolean":
+				f.IsBoolean = true
+			case "integer", "numeric", "double":
+				f.IsNumber = true
+			}
+		}
+		if len(v) > 1 {
+			f.IsArray = true
+			f.Values = v
+		} else if len(v) == 1 {
+			f.Value = v[0]
+		}
+		filtersWrap = append(filtersWrap, f)
+	}
+
+	tplData := map[string]interface{}{
+		"TableName":  h.TableName,
+		"Dimensions": dims,
+		"Measures":   measures,
+		"LOVs":       lovsDecl,
+		"Filters":    filtersWrap,
+	}
+
+	query, err := h.renderSQL("pivot.sql", tplData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render pivot SQL template: %w", err)
+	}
+	if os.Getenv("DEBUG_SQL") == "true" {
+		fmt.Printf("--- PIVOT SQL ---\n%s\n-----------------\n", query)
+	}
+	rows, err := h.DB.Query("SELECT datagrid.datagrid_execute_json($1, $2)", query, string(configJSON))
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute pivot template SQL: %w", err)
+	}
+	defer rows.Close()
+
 	records := []map[string]interface{}{}
-	if recordsJSON != "" && recordsJSON != "null" {
-		if err := json.Unmarshal([]byte(recordsJSON), &records); err != nil {
-			return nil, fmt.Errorf("failed to parse pivot data: %w", err)
+	for rows.Next() {
+		var rowJSON string
+		if err := rows.Scan(&rowJSON); err == nil {
+			var row map[string]interface{}
+			if err := json.Unmarshal([]byte(rowJSON), &row); err == nil {
+				records = append(records, row)
+			}
 		}
 	}
 

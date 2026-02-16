@@ -5,6 +5,7 @@
     "definitions": {
         "multi_lang_label": {
             "type": "object",
+            "description": "A map of ISO 639-1 language codes (e.g., 'en', 'hu') to localized strings",
             "patternProperties": {
                 "^[a-z]{2}$": {
                     "type": "string"
@@ -15,6 +16,7 @@
         },
         "lov_item": {
             "type": "object",
+            "description": "A single entry in a List of Values (LOV) dropdown",
             "required": [
                 "value"
             ],
@@ -32,16 +34,20 @@
             ],
             "properties": {
                 "css": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "CSS class applied to the cell when this value is selected"
                 },
                 "display": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Legacy display pattern with placeholders"
                 },
                 "rowStyle": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Inline CSS style applied to the entire row when this value is selected (e.g., 'background: #fee')"
                 },
                 "rowClass": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "CSS class applied to the entire row when this value is selected (e.g., 'table-warning')"
                 },
                 "value": {
                     "type": [
@@ -49,9 +55,11 @@
                         "number",
                         "integer",
                         "boolean"
-                    ]
+                    ],
+                    "description": "The raw database value"
                 },
                 "label": {
+                    "description": "The display text for this value",
                     "oneOf": [
                         {
                             "type": "string"
@@ -62,12 +70,14 @@
                     ]
                 },
                 "labels": {
-                    "$ref": "#/definitions/multi_lang_label"
+                    "$ref": "#/definitions/multi_lang_label",
+                    "description": "Localized labels for this value"
                 }
             }
         },
         "version": {
             "type": "string",
+            "description": "Semantic versioning in Major.Minor format (e.g., '1.0')",
             "pattern": "^[0-9]+\\.[0-9]+$"
         }
     }

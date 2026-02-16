@@ -121,7 +121,7 @@ func (p *CursorPool) removeCursor(sid string, state *CursorState) {
 }
 
 // InitializeCursor sets up a new cursor or returns an existing one
-func (p *CursorPool) InitializeCursor(ctx context.Context, sid, query string) (*CursorState, error) {
+func (p *CursorPool) InitializeCursor(ctx context.Context, sid, query string, args ...interface{}) (*CursorState, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -151,7 +151,7 @@ func (p *CursorPool) InitializeCursor(ctx context.Context, sid, query string) (*
 	cursorName := "cur_" + uuid.New().String()[:8]
 	declareSQL := fmt.Sprintf("DECLARE %s SCROLL CURSOR FOR %s", cursorName, query)
 
-	if _, err := tx.ExecContext(ctx, declareSQL); err != nil {
+	if _, err := tx.ExecContext(ctx, declareSQL, args...); err != nil {
 		tx.Rollback()
 		conn.Close()
 		return nil, fmt.Errorf("failed to declare cursor: %w", err)

@@ -1,23 +1,19 @@
-{{ range $idx, $lov := .LOVs }}
-{{ if eq $idx 0 }}WITH {{ else }}, {{ end }}lov{{ add $idx 1 }} AS (
-    SELECT 
-        {{ if $lov.IsBoolean }}(elem->'code')::boolean{{ else if $lov.IsNumber }}(elem->'code')::numeric{{ else }}(elem->>'code')::text{{ end }} as code, 
-        (elem->>'label')::text as label 
-    FROM jsonb_array_elements(COALESCE(($1 #> '{lovs,{{ $idx }},values}'), '[]'::jsonb)) elem
-)
-{{ end }}
 SELECT 
     {{ range $i, $col := .Columns }}{{ if $i }}, {{ end }}{{ $col.Name }} AS {{ quote_ident $col.Alias }}{{ end }}
 FROM {{ quote_ident .TableName }} AS src
-{{ range $idx, $lov := .LOVs }}
-{{ coalesce $lov.Join "LEFT" }} JOIN lov{{ add $idx 1 }} ON src.{{ quote_ident $lov.Column }} = lov{{ add $idx 1 }}.code
-{{ end }}
 WHERE true
+{{ range $idx, $lov := .LOVs }}
+AND src.{{ quote_ident $lov.Column }} = ANY(($1 #> '{lovs,{{ $idx }},values}')::{{ if $lov.IsBoolean }}boolean[]{{ else if $lov.IsNumber }}numeric[]{{ else }}text[]{{ end }})
+{{ end }}
 {{ range $f := .Filters }}
 {{ if $f.IsArray }}
-AND src.{{ quote_ident $f.Column }} IN (SELECT value{{ if $f.IsBoolean }}::boolean{{ else if $f.IsNumber }}::numeric{{ end }} FROM jsonb_array_elements_text(COALESCE(($1 #> '{filters,{{ $f.Column }}}'), '[]'::jsonb)))
+AND src.{{ quote_ident $f.Column }} = ANY(($1 #> '{filters,{{ $f.Column }}}')::{{ if $f.IsBoolean }}boolean[]{{ else if $f.IsNumber }}numeric[]{{ else }}text[]{{ end }})
+{{ else if $f.IsNumber }}
+AND src.{{ quote_ident $f.Column }} = ($1 #># '{filters,{{ $f.Column }},0}')
+{{ else if $f.IsBoolean }}
+AND src.{{ quote_ident $f.Column }} = ($1 #>& '{filters,{{ $f.Column }},0}')
 {{ else }}
-AND src.{{ quote_ident $f.Column }} = COALESCE(($1 #>> '{filters,{{ $f.Column }},0}'), ''{{ if $f.IsBoolean }}'false'{{ else if $f.IsNumber }}'0'{{ end }}){{ if $f.IsBoolean }}::boolean{{ else if $f.IsNumber }}::numeric{{ end }}
+AND src.{{ quote_ident $f.Column }} = ($1 #>> '{filters,{{ $f.Column }},0}')
 {{ end }}
 {{ end }}
 {{ if .Order }} {{ .Order }}{{ end }}

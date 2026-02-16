@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -358,15 +359,30 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 					addLov(processLovItem(item, lang))
 				}
 			} else if strings.Contains(strings.ToUpper(v), "SELECT") {
-
 				query := strings.ReplaceAll(v, "{lang}", lang)
-				rows, err := db.Query(query)
+				rows, err := db.Query("SELECT datagrid.datagrid_execute_json($1, '{}'::jsonb)", query)
 				if err == nil {
 					defer rows.Close()
 					for rows.Next() {
-						var val, lbl string
-						if err := rows.Scan(&val, &lbl); err == nil {
-							lovItems = append(lovItems, LOVItem{Value: val, Label: lbl})
+						var rowJSON string
+						if err := rows.Scan(&rowJSON); err == nil {
+							var ri map[string]interface{}
+							if err := json.Unmarshal([]byte(rowJSON), &ri); err == nil {
+								val := ri["code"]
+								if val == nil {
+									val = ri["value"]
+								}
+								lbl := ri["label"]
+								if lbl == nil {
+									lbl = ri["display"]
+								}
+								if lbl == nil {
+									lbl = val
+								}
+								if val != nil {
+									addLov(LOVItem{Value: val, Label: fmt.Sprintf("%v", lbl)})
+								}
+							}
 						}
 					}
 				}
@@ -505,6 +521,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Default to pivot if catalog type says so
 	if mode == "" && h.Catalog.Type == "pivot" {
 		mode = "pivot"
+	}
+
+	if mode == "csv" {
+		params.Limit = 0 // No limit for export
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.csv", h.TableName))
+
+		err := h.StreamCSV(w, params)
+		if err != nil {
+			// Note: Header already sent, but we can't do much here except log or close
+		}
+		return
 	}
 
 	if mode == "pivot" {
@@ -674,41 +702,33 @@ func (h *Handler) ParseParams(r *http.Request) RequestParams {
 	}
 }
 
-func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
-	// Start transaction to use SET LOCAL for threshold
-	tx, err := h.DB.Begin()
+func (h *Handler) StreamCSV(w io.Writer, p RequestParams) error {
+	// 1. Generate Hybrid SQL
+	query, configJSON, err := h.BuildGridSQL(p)
 	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	if h.Config.Searchable.Operator == "%" && h.Config.Searchable.Threshold > 0 {
-		tx.Exec(fmt.Sprintf("SET LOCAL pg_trgm.similarity_threshold = %f", h.Config.Searchable.Threshold))
+		return err
 	}
 
-	where, args := h.buildWhere(p)
+	rows, err := h.DB.Query("SELECT datagrid.datagrid_execute_csv($1, $2)", query, configJSON)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var line string
+		if err := rows.Scan(&line); err == nil {
+			fmt.Fprintln(w, line)
+		}
+	}
+	return nil
+}
+
+// BuildGridSQL generates the SQL query and JSON configuration for the grid execution.
+func (h *Handler) BuildGridSQL(p RequestParams) (string, string, error) {
 	order := h.buildOrder(p.Sort)
 
-	// Handle explicit schema if table name contains dot
-	tableName := h.TableName
-	if strings.Contains(tableName, ".") {
-		parts := strings.Split(tableName, ".")
-		tableName = fmt.Sprintf("\"%s\".\"%s\"", parts[0], parts[1])
-	} else {
-		tableName = fmt.Sprintf("\"%s\"", tableName)
-	}
-
-	// 0. Get total count
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s %s", quote_ident(h.TableName), where)
-	var total int
-	if err := tx.QueryRow(countQuery, args...).Scan(&total); err != nil {
-		if os.Getenv("DEBUG_SQL") == "true" {
-			fmt.Printf("--- COUNT QUERY ERROR ---\nQuery: %s\nError: %v\n------------------------\n", countQuery, err)
-		}
-		return nil, err
-	}
-
-	// 1. Prepare JSON config for datagrid_execute
+	// Build JSON config for SQL generation
 	type ColDecl struct {
 		Name  string `json:"name"`
 		Alias string `json:"alias,omitempty"`
@@ -720,14 +740,13 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 	type LOVDecl struct {
 		Column     string     `json:"column"`
 		Values     []LOVEntry `json:"values"`
-		Join       string     `json:"join,omitempty"`
 		ValuesJSON string     `json:"valuesJSON,omitempty"`
 		IsBoolean  bool       `json:"-"`
 		IsNumber   bool       `json:"-"`
 	}
 
 	config := make(map[string]interface{})
-	config["tableName"] = h.TableName // Re-use raw table name for JSON
+	config["tableName"] = h.TableName
 	config["order"] = order
 	config["limit"] = p.Limit
 	config["offset"] = p.Offset
@@ -736,7 +755,6 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 	lovsDecl := []LOVDecl{}
 
 	for _, col := range h.Columns {
-		// Heuristic: if Display contains placeholders, it's a virtual column
 		if strings.Contains(col.Display, "%") {
 			continue
 		}
@@ -769,91 +787,113 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 			})
 		}
 	}
-	config["columns"] = colsDecl
-	config["lovs"] = lovsDecl
-	config["filters"] = p.Filters
 
-	if os.Getenv("DEBUG_SQL") == "true" {
+	type FilterWrap struct {
+		Column    string
+		IsArray   bool
+		IsBoolean bool
+		IsNumber  bool
+		Values    []string
+		Value     string
+	}
+	filtersWrap := []FilterWrap{}
+	for k, v := range p.Filters {
+		if _, ok := h.Config.Filters[k]; !ok {
+			continue
+		}
+
+		f := FilterWrap{Column: k}
+		if conf, ok := h.Config.Filters[k]; ok {
+			switch conf.Type {
+			case "boolean":
+				f.IsBoolean = true
+			case "integer", "numeric", "double":
+				f.IsNumber = true
+			}
+		}
+		if len(v) > 1 {
+			f.IsArray = true
+			f.Values = v
+		} else if len(v) == 1 {
+			f.Value = v[0]
+		}
+		filtersWrap = append(filtersWrap, f)
 	}
 
+	tplData := map[string]interface{}{
+		"TableName": h.TableName,
+		"Columns":   colsDecl,
+		"LOVs":      lovsDecl,
+		"Filters":   filtersWrap,
+		"Order":     order,
+		"Limit":     p.Limit,
+		"Offset":    p.Offset,
+	}
+
+	query, err := h.renderSQL("grid.sql", tplData)
+	if err != nil {
+		return "", "", err
+	}
 	configJSON, _ := json.Marshal(config)
+	return query, string(configJSON), nil
+}
 
-	// 2. Fetch Records
-	useTemplate := os.Getenv("EXPERIMENTAL_SQL_TEMPLATES") == "true"
-	var recordsJSON string
+func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
+	// Start transaction to use SET LOCAL for threshold
+	tx, err := h.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
 
-	if useTemplate {
-		// --- EXPERIMENTAL: Go Template Based Generation ---
-		type FilterWrap struct {
-			Column    string
-			IsArray   bool
-			IsBoolean bool
-			IsNumber  bool
-			Values    []string
-			Value     string
-		}
-		filtersWrap := []FilterWrap{}
-		for k, v := range p.Filters {
-			// Skip technical parameters that are not defined as filters in the catalog
-			if _, ok := h.Config.Filters[k]; !ok {
-				continue
-			}
+	if h.Config.Searchable.Operator == "%" && h.Config.Searchable.Threshold > 0 {
+		tx.Exec(fmt.Sprintf("SET LOCAL pg_trgm.similarity_threshold = %f", h.Config.Searchable.Threshold))
+	}
 
-			f := FilterWrap{Column: k}
-			if conf, ok := h.Config.Filters[k]; ok {
-				switch conf.Type {
-				case "boolean":
-					f.IsBoolean = true
-				case "integer", "numeric", "double":
-					f.IsNumber = true
-				}
-			}
-			if len(v) > 1 {
-				f.IsArray = true
-				f.Values = v
-			} else if len(v) == 1 {
-				f.Value = v[0]
-			}
-			filtersWrap = append(filtersWrap, f)
-		}
+	where, args := h.buildWhere(p)
 
-		tplData := map[string]interface{}{
-			"TableName": h.TableName,
-			"Columns":   colsDecl,
-			"LOVs":      lovsDecl,
-			"Filters":   filtersWrap,
-			"Order":     order,
-			"Limit":     p.Limit,
-			"Offset":    p.Offset,
-		}
-
-		query, err := h.renderSQL("grid.sql", tplData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to render grid SQL template: %w", err)
-		}
+	// 0. Get total count
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s %s", quote_ident(h.TableName), where)
+	var total int
+	if err := tx.QueryRow(countQuery, args...).Scan(&total); err != nil {
 		if os.Getenv("DEBUG_SQL") == "true" {
-			fmt.Printf("--- EXPERIMENTAL GRID SQL ---\n%s\n-----------------------------\n", query)
+			fmt.Printf("--- COUNT QUERY ERROR ---\nQuery: %s\nError: %v\n------------------------\n", countQuery, err)
 		}
-		err = tx.QueryRow("SELECT datagrid.datagrid_execute_json($1, $2)", query, string(configJSON)).Scan(&recordsJSON)
-		if err != nil {
-			if os.Getenv("DEBUG_SQL") == "true" {
-				fmt.Printf("--- EXPERIMENTAL SQL EXEC ERROR ---\nError: %v\n----------------------------------\n", err)
-			}
+		return nil, err
+	}
+
+	// 1. Generate Hybrid SQL
+	query, configJSON, err := h.BuildGridSQL(p)
+	if err != nil {
+		return nil, err
+	}
+
+	if os.Getenv("DEBUG_SQL") == "true" {
+		fmt.Printf("--- GRID SQL ---\n%s\n----------------\n", query)
+	}
+
+	// 2. Fetch Records using streaming wrapper
+	records := []map[string]interface{}{}
+	rows, err := tx.Query("SELECT datagrid.datagrid_execute_json($1, $2)", query, configJSON)
+	if err != nil {
+		if os.Getenv("DEBUG_SQL") == "true" {
+			fmt.Printf("--- SQL EXEC ERROR ---\nError: %v\n---------------------\n", err)
 		}
 	} else {
-		// --- ESTABLISHED: Database Side Execution ---
-		err = tx.QueryRow("SELECT datagrid_execute($1, 'grid', 'json')", string(configJSON)).Scan(&recordsJSON)
+		defer rows.Close()
+		for rows.Next() {
+			var rowJSON string
+			if err := rows.Scan(&rowJSON); err == nil {
+				var row map[string]interface{}
+				if err := json.Unmarshal([]byte(rowJSON), &row); err == nil {
+					records = append(records, row)
+				}
+			}
+		}
 	}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute grid data: %w", err)
-	}
-
-	records := []map[string]interface{}{}
-	if recordsJSON != "" && recordsJSON != "null" {
-		if err := json.Unmarshal([]byte(recordsJSON), &records); err != nil {
-			return nil, fmt.Errorf("failed to parse grid data: %w", err)
-		}
 	}
 
 	// 3. Post-process records (Styling & Metadata)
@@ -1215,6 +1255,9 @@ func (h *Handler) renderSQL(tmplName string, data interface{}) (string, error) {
 	}
 
 	result := sb.String()
+	// Automatically cast $1 to jsonb for Postgres type inference
+	result = strings.ReplaceAll(result, "$1", "$1::jsonb")
+
 	if os.Getenv("DEBUG_SQL") == "true" {
 		fmt.Printf("--- RENDERED SQL (%s) ---\n%s\n------------------------\n", tmplName, result)
 	}

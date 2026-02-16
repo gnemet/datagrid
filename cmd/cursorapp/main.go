@@ -166,27 +166,19 @@ func main() {
 	})
 
 	http.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
-		handler.ListEndpoint = "/list"
-		sid := "cursor-app-session"
+		params := handler.ParseParams(r)
+		query, _, err := handler.BuildGridSQL(params)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-		// Map datagrid's offset/limit search params if needed
-		// But for CursorApp, we'll listen to a 'dir' param for MOVE logic
+		sid := "cursor-app-session"
 		direction := r.URL.Query().Get("dir")
 		if direction == "" {
-			direction = "FIRST" // Initial load
+			direction = "FIRST"
 		}
-
-		limit := 10
-		if l := r.URL.Query().Get("limit"); l != "" {
-			fmt.Sscanf(l, "%d", &limit)
-		}
-
-		// Build query from handler metadata
-		colNames := []string{}
-		for _, col := range handler.Columns {
-			colNames = append(colNames, col.Field)
-		}
-		query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(colNames, ", "), handler.TableName)
+		limit := params.Limit
 
 		ctx := context.Background()
 		dbMode := os.Getenv("DB_MODE")
@@ -195,7 +187,6 @@ func main() {
 		}
 
 		var results []map[string]interface{}
-		var err error
 
 		if dbMode == "refcursor" {
 			// Re-initialize cursor on FIRST or if missing (simplified)
@@ -240,7 +231,7 @@ func main() {
 		tableResult := &datagrid.TableResult{
 			Records:          results,
 			UIColumns:        handler.Columns,
-			Limit:            limit,
+			Limit:            params.Limit,
 			IconStyleLibrary: handler.IconStyleLibrary,
 			IsPhosphor:       strings.Contains(strings.ToLower(handler.IconStyleLibrary), "phosphor"),
 		}
