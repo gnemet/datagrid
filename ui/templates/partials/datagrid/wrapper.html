@@ -154,8 +154,10 @@
 
     <div class="grid-main-layout">
         <div id="datagrid-main-view" class="dg-grid-container"
-            hx-get="{{if eq .ViewMode `pivot`}}{{.PivotEndpoint}}?mode=pivot{{else}}{{.ListEndpoint}}?mode=grid{{end}}"
+            hx-get="{{.ListEndpoint}}{{if contains .ListEndpoint `?`}}&{{else}}?{{end}}mode={{if eq .ViewMode `pivot` }}pivot{{else}}grid{{end}}"
             hx-trigger="load" hx-include=".search-input, #datagrid-filter-form, .dg-select, [name='config']">
+
+
 
 
 

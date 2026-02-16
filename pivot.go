@@ -1,7 +1,9 @@
 package datagrid
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -26,36 +28,128 @@ func (h *Handler) PivotData(p RequestParams) (*PivotResult, error) {
 
 	conf := h.Config.Pivot
 
-	// Quote identifiers
-	quote := func(s string) string {
-		if strings.Contains(s, "\"") || strings.Contains(s, "(") || strings.Contains(s, " ") {
-			return s
-		}
-		return "\"" + s + "\""
+	// 1. Prepare JSON config for datagrid_get_pivot_sql
+	type DimDecl struct {
+		Column string `json:"column"`
+		IsLOV  bool   `json:"isLOV"`
+		LovIdx int    `json:"lovIdx,omitempty"`
+	}
+	type MeasureDecl struct {
+		Column string `json:"column"`
+		Func   string `json:"func"`
+		Alias  string `json:"alias"`
+	}
+	type LOVEntry struct {
+		Code  interface{} `json:"code"`
+		Label string      `json:"label"`
+	}
+	type LOVDecl struct {
+		Column     string     `json:"column"`
+		Values     []LOVEntry `json:"values"`
+		ValuesJSON string     `json:"valuesJSON,omitempty"`
+		IsBoolean  bool       `json:"-"`
+		IsNumber   bool       `json:"-"`
 	}
 
-	quotedRows := []string{}
+	config := make(map[string]interface{})
+	config["tableName"] = h.TableName
+
+	dimsDecl := []DimDecl{}
+	lovsDecl := []LOVDecl{}
+	lovMapIdx := make(map[string]int)
+
+	// Collect Dimensions
 	for _, r := range conf.Rows {
-		quotedRows = append(quotedRows, quote(r.Column))
+		d := DimDecl{Column: r.Column}
+		// Check if it's an LOV
+		for _, col := range h.Columns {
+			if col.Field == r.Column && len(col.LOV) > 0 {
+				d.IsLOV = true
+				if idx, ok := lovMapIdx[r.Column]; ok {
+					d.LovIdx = idx
+				} else {
+					entries := []LOVEntry{}
+					for _, item := range col.LOV {
+						lbl := item.Labels[h.Lang]
+						if lbl == "" {
+							lbl = item.Label
+						}
+						if lbl == "" {
+							lbl = item.Display
+						}
+						entries = append(entries, LOVEntry{Code: item.Value, Label: lbl})
+					}
+					valJSON, _ := json.Marshal(entries)
+					isBool := strings.ToLower(col.Type) == "boolean" || strings.ToLower(col.Type) == "bool"
+					isNum := strings.ToLower(col.Type) == "integer" || strings.ToLower(col.Type) == "numeric" || strings.ToLower(col.Type) == "double"
+					lovsDecl = append(lovsDecl, LOVDecl{
+						Column:     r.Column,
+						Values:     entries,
+						ValuesJSON: string(valJSON),
+						IsBoolean:  isBool,
+						IsNumber:   isNum,
+					})
+					d.LovIdx = len(lovsDecl)
+					lovMapIdx[r.Column] = d.LovIdx
+				}
+				break
+			}
+		}
+		dimsDecl = append(dimsDecl, d)
 	}
-	quotedCols := []string{}
 	for _, c := range conf.Columns {
-		quotedCols = append(quotedCols, quote(c.Column))
+		d := DimDecl{Column: c.Column}
+		for _, col := range h.Columns {
+			if col.Field == c.Column && len(col.LOV) > 0 {
+				d.IsLOV = true
+				if idx, ok := lovMapIdx[c.Column]; ok {
+					d.LovIdx = idx
+				} else {
+					entries := []LOVEntry{}
+					for _, item := range col.LOV {
+						lbl := item.Labels[h.Lang]
+						if lbl == "" {
+							lbl = item.Label
+						}
+						if lbl == "" {
+							lbl = item.Display
+						}
+						entries = append(entries, LOVEntry{Code: item.Value, Label: lbl})
+					}
+					valJSON, _ := json.Marshal(entries)
+					isBool := strings.ToLower(col.Type) == "boolean" || strings.ToLower(col.Type) == "bool"
+					isNum := strings.ToLower(col.Type) == "integer" || strings.ToLower(col.Type) == "numeric" || strings.ToLower(col.Type) == "double"
+					lovsDecl = append(lovsDecl, LOVDecl{
+						Column:     c.Column,
+						Values:     entries,
+						ValuesJSON: string(valJSON),
+						IsBoolean:  isBool,
+						IsNumber:   isNum,
+					})
+					d.LovIdx = len(lovsDecl)
+					lovMapIdx[c.Column] = d.LovIdx
+				}
+				break
+			}
+		}
+		dimsDecl = append(dimsDecl, d)
 	}
 
-	rowDims := strings.Join(quotedRows, ", ")
-	colDims := strings.Join(quotedCols, ", ")
-
-	// Build measure selections
-	measureSelections := []string{}
+	measuresDecl := []MeasureDecl{}
 	resMeasures := []string{}
-	for _, v := range conf.Values {
+	for i, v := range conf.Values {
 		aggFunc := v.Func
 		if strings.ToUpper(aggFunc) == "COUNT DISTINCT" {
-			measureSelections = append(measureSelections, fmt.Sprintf("COUNT(DISTINCT %s)", quote(v.Column)))
-		} else {
-			measureSelections = append(measureSelections, fmt.Sprintf("%s(%s)", aggFunc, quote(v.Column)))
+			aggFunc = "COUNT(DISTINCT" // A bit hacky for the function, or handle in SQL
+			// Actually, let's just use the SQL function to handle it or pass plain func
 		}
+
+		alias := fmt.Sprintf("val%d", i)
+		measuresDecl = append(measuresDecl, MeasureDecl{
+			Column: v.Column,
+			Func:   v.Func,
+			Alias:  alias,
+		})
 
 		label := v.Label
 		if label == "" {
@@ -64,35 +158,116 @@ func (h *Handler) PivotData(p RequestParams) (*PivotResult, error) {
 		resMeasures = append(resMeasures, label)
 	}
 
-	tableName := h.TableName
-	if strings.Contains(tableName, ".") {
-		parts := strings.Split(tableName, ".")
-		tableName = fmt.Sprintf("\"%s\".\"%s\"", parts[0], parts[1])
+	config["dimensions"] = dimsDecl
+	config["measures"] = measuresDecl
+	config["lovs"] = lovsDecl
+	config["filters"] = p.Filters
+
+	configJSON, _ := json.Marshal(config)
+
+	// 2. Fetch Records
+	useTemplate := os.Getenv("EXPERIMENTAL_SQL_TEMPLATES") == "true"
+	var recordsJSON string
+
+	if useTemplate {
+		// --- EXPERIMENTAL: Go Template Based Generation ---
+		type DimWrap struct {
+			Source string
+			Column string
+		}
+		type MeasureWrap struct {
+			Func   string
+			Column string
+			Alias  string
+		}
+		type FilterWrap struct {
+			Column    string
+			IsArray   bool
+			IsBoolean bool
+			IsNumber  bool
+			Values    []string
+			Value     string
+		}
+
+		dims := []DimWrap{}
+		for _, d := range dimsDecl {
+			src := "src." + quote_ident(d.Column)
+			if d.IsLOV {
+				src = "lov" + fmt.Sprintf("%d", d.LovIdx) + ".label"
+			}
+			dims = append(dims, DimWrap{Source: src, Column: d.Column})
+		}
+
+		measures := []MeasureWrap{}
+		for _, m := range measuresDecl {
+			measures = append(measures, MeasureWrap{
+				Func:   m.Func,
+				Column: m.Column,
+				Alias:  m.Alias,
+			})
+		}
+
+		filtersWrap := []FilterWrap{}
+		for k, v := range p.Filters {
+			// Skip technical parameters that are not defined as filters in the catalog
+			if _, ok := h.Config.Filters[k]; !ok {
+				continue
+			}
+
+			f := FilterWrap{Column: k}
+			if conf, ok := h.Config.Filters[k]; ok {
+				switch conf.Type {
+				case "boolean":
+					f.IsBoolean = true
+				case "integer", "numeric", "double":
+					f.IsNumber = true
+				}
+			}
+			if len(v) > 1 {
+				f.IsArray = true
+				f.Values = v
+			} else if len(v) == 1 {
+				f.Value = v[0]
+			}
+			filtersWrap = append(filtersWrap, f)
+		}
+
+		tplData := map[string]interface{}{
+			"TableName":  h.TableName,
+			"Dimensions": dims,
+			"Measures":   measures,
+			"LOVs":       lovsDecl,
+			"Filters":    filtersWrap,
+		}
+
+		query, err := h.renderSQL("pivot.sql", tplData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render pivot SQL template: %w", err)
+		}
+		if os.Getenv("DEBUG_SQL") == "true" {
+			fmt.Printf("--- EXPERIMENTAL PIVOT SQL ---\n%s\n------------------------------\n", query)
+		}
+		err = h.DB.QueryRow("SELECT datagrid.datagrid_execute_json($1, $2)", query, string(configJSON)).Scan(&recordsJSON)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute pivot template SQL: %w", err)
+		}
 	} else {
-		tableName = fmt.Sprintf("\"%s\"", tableName)
+		// --- ESTABLISHED: Database Side Execution ---
+		err := h.DB.QueryRow("SELECT datagrid_execute($1, 'pivot', 'json')", string(configJSON)).Scan(&recordsJSON)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute pivot data: %w", err)
+		}
 	}
 
-	where, args := h.buildWhere(p)
-
-	// Build the aggregation query
-	query := fmt.Sprintf(
-		"SELECT %s, %s, %s FROM %s %s GROUP BY %s, %s",
-		rowDims,
-		colDims,
-		strings.Join(measureSelections, ", "),
-		tableName,
-		where,
-		rowDims,
-		colDims,
-	)
-
-	rows, err := h.DB.Query(query, args...)
-	if err != nil {
-		return nil, err
+	records := []map[string]interface{}{}
+	if recordsJSON != "" && recordsJSON != "null" {
+		if err := json.Unmarshal([]byte(recordsJSON), &records); err != nil {
+			return nil, fmt.Errorf("failed to parse pivot data: %w", err)
+		}
 	}
-	defer rows.Close()
 
 	res := &PivotResult{
+
 		Measures:      resMeasures,
 		DisplayLabels: make(map[string]string),
 		DimensionCSS:  make(map[string]string),
@@ -126,59 +301,18 @@ func (h *Handler) PivotData(p RequestParams) (*PivotResult, error) {
 	rowKeySet := make(map[string]bool)
 	colKeySet := make(map[string]bool)
 
-	cols, _ := rows.Columns()
 	numRows := len(conf.Rows)
 	numCols := len(conf.Columns)
 	numVals := len(conf.Values)
 
-	// Prepare LOV mappings
-	lovMap := make(map[string]map[string]string)
-	for _, col := range h.Columns {
-		if len(col.LOV) > 0 {
-			m := make(map[string]string)
-			for _, item := range col.LOV {
-				valStr := strings.TrimSpace(fmt.Sprintf("%v", item.Value))
-				label := item.Label
-				if label == "" {
-					label = item.Display
-				}
-				if label != "" {
-					m[valStr] = label
-				}
-			}
-			lovMap[col.Field] = m
-		}
-	}
-
-	for rows.Next() {
-		values := make([]any, len(cols))
-		valuePtrs := make([]any, len(cols))
-		for i := range values {
-			valuePtrs[i] = &values[i]
-		}
-
-		if err := rows.Scan(valuePtrs...); err != nil {
-			return nil, err
-		}
-
+	for _, row := range records {
 		rKeys := []string{}
 		for i := 0; i < numRows; i++ {
-			val := values[i]
-			var valStr string
-			if val == nil {
-				valStr = "(null)"
-			} else if b, ok := val.([]byte); ok {
-				valStr = string(b)
-			} else {
-				valStr = fmt.Sprintf("%v", val)
-			}
-			valStr = strings.TrimSpace(valStr)
-
 			field := conf.Rows[i].Column
-			if m, ok := lovMap[field]; ok {
-				if label, ok := m[valStr]; ok {
-					valStr = label
-				}
+			val := row[field]
+			valStr := "(null)"
+			if val != nil {
+				valStr = strings.TrimSpace(fmt.Sprintf("%v", val))
 			}
 			rKeys = append(rKeys, valStr)
 		}
@@ -190,23 +324,12 @@ func (h *Handler) PivotData(p RequestParams) (*PivotResult, error) {
 		}
 
 		cKeys := []string{}
-		for i := numRows; i < numRows+numCols; i++ {
-			val := values[i]
-			var valStr string
-			if val == nil {
-				valStr = "(null)"
-			} else if b, ok := val.([]byte); ok {
-				valStr = string(b)
-			} else {
-				valStr = fmt.Sprintf("%v", val)
-			}
-			valStr = strings.TrimSpace(valStr)
-
-			field := conf.Columns[i-numRows].Column
-			if m, ok := lovMap[field]; ok {
-				if label, ok := m[valStr]; ok {
-					valStr = label
-				}
+		for i := 0; i < numCols; i++ {
+			field := conf.Columns[i].Column
+			val := row[field]
+			valStr := "(null)"
+			if val != nil {
+				valStr = strings.TrimSpace(fmt.Sprintf("%v", val))
 			}
 			cKeys = append(cKeys, valStr)
 		}
@@ -232,9 +355,11 @@ func (h *Handler) PivotData(p RequestParams) (*PivotResult, error) {
 		}
 
 		for i := 0; i < numVals; i++ {
-			valRaw := values[numRows+numCols+i]
+			alias := fmt.Sprintf("val%d", i)
+			valRaw := row[alias]
 			mKey := resMeasures[i]
 			var val float64
+
 			switch v := valRaw.(type) {
 			case float64:
 				val = v
@@ -244,8 +369,8 @@ func (h *Handler) PivotData(p RequestParams) (*PivotResult, error) {
 				val = float64(v)
 			case int:
 				val = float64(v)
-			case []byte:
-				fmt.Sscanf(string(v), "%f", &val)
+			case string:
+				fmt.Sscanf(v, "%f", &val)
 			default:
 				fmt.Sscanf(fmt.Sprintf("%v", v), "%f", &val)
 			}

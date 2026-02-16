@@ -40,6 +40,16 @@ LOVs drive both UI dropdowns and server-side filter validation:
 - **Dynamic JSON Sorting**: Support for `dyn-` prefix (e.g., `dyn-data.role`) which is translated to PostgreSQL JSONB operators (`->>`) at runtime.
 - **Schema Isolation**: Datagrid logic is isolated from MCP extensions via separate schema validation in `internal/data/schemas/`.
 
+### Hybrid SQL Execution Mode (Experimental)
+The system supports a high-performance, secure hybrid SQL generation and execution model.
+- **Architecture**: Go templates (`grid.sql.tmpl`, `pivot.sql.tmpl`) define the SQL structure, while data access is handled via a parameterized PostgreSQL function (`datagrid_execute_json`) using a JSONB payload.
+- **Type Safety**:
+    - **Native Type Preservation**: LOV codes and filter values preserve their native JSON types (boolean, numeric) from the backend to the database.
+    - **Dynamic Casting**: SQL templates automatically apply PostgreSQL casts (`::boolean`, `::numeric`) based on column metadata flags to ensure type-safe JOINs and filtering.
+- **Security**: Prevent SQL injection by using parameterized queries ($1) and `quote_ident` for table/column names.
+- **Indicators**: Displays `Hybrid SQL Active` when `EXPERIMENTAL_SQL_TEMPLATES=true` is set.
+- **Optimized Export**: The `datagrid_execute_csv` function uses `row_to_json` for robust, high-performance CSV generation.
+
 ### UI Integration Standards
 - **Icons**: Supports both **FontAwesome** (`fas`) and **Phosphor** (`ph`) icon libraries.
     - **Configuration**: Set `iconStyleLibrary` to `"Phosphor"` or `"FontAwesome"` (default) in the catalog's `datagrid` section.

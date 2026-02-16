@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	tt "text/template"
 )
 
 // UIAssets embeds the standardized CSS, JS and Templates
@@ -697,68 +698,184 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 		tableName = fmt.Sprintf("\"%s\"", tableName)
 	}
 
-	// Get total count
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s %s", tableName, where)
+	// 0. Get total count
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s %s", quote_ident(h.TableName), where)
 	var total int
 	if err := tx.QueryRow(countQuery, args...).Scan(&total); err != nil {
+		if os.Getenv("DEBUG_SQL") == "true" {
+			fmt.Printf("--- COUNT QUERY ERROR ---\nQuery: %s\nError: %v\n------------------------\n", countQuery, err)
+		}
 		return nil, err
 	}
 
-	// Fetch records - Select all columns for Forensic DOM metadata
-	query := fmt.Sprintf("SELECT * FROM %s %s %s LIMIT %d OFFSET %d",
-		tableName, where, order, p.Limit, p.Offset)
+	// 1. Prepare JSON config for datagrid_execute
+	type ColDecl struct {
+		Name  string `json:"name"`
+		Alias string `json:"alias,omitempty"`
+	}
+	type LOVEntry struct {
+		Code  interface{} `json:"code"`
+		Label string      `json:"label"`
+	}
+	type LOVDecl struct {
+		Column     string     `json:"column"`
+		Values     []LOVEntry `json:"values"`
+		Join       string     `json:"join,omitempty"`
+		ValuesJSON string     `json:"valuesJSON,omitempty"`
+		IsBoolean  bool       `json:"-"`
+		IsNumber   bool       `json:"-"`
+	}
 
-	rows, err := tx.Query(query, args...)
+	config := make(map[string]interface{})
+	config["tableName"] = h.TableName // Re-use raw table name for JSON
+	config["order"] = order
+	config["limit"] = p.Limit
+	config["offset"] = p.Offset
+
+	colsDecl := []ColDecl{}
+	lovsDecl := []LOVDecl{}
+
+	for _, col := range h.Columns {
+		// Heuristic: if Display contains placeholders, it's a virtual column
+		if strings.Contains(col.Display, "%") {
+			continue
+		}
+		colsDecl = append(colsDecl, ColDecl{Name: "src." + col.Field, Alias: col.Field})
+		if len(col.LOV) > 0 {
+			entries := []LOVEntry{}
+			for _, item := range col.LOV {
+				lbl := item.Labels[h.Lang]
+				if lbl == "" {
+					lbl = item.Label
+				}
+				if lbl == "" {
+					lbl = item.Display
+				}
+				entries = append(entries, LOVEntry{Code: item.Value, Label: lbl})
+			}
+			valJSON, _ := json.Marshal(entries)
+			isBool := strings.ToLower(col.Type) == "boolean" || strings.ToLower(col.Type) == "bool"
+			isNum := strings.ToLower(col.Type) == "integer" || strings.ToLower(col.Type) == "numeric" || strings.ToLower(col.Type) == "double"
+			lovsDecl = append(lovsDecl, LOVDecl{
+				Column:     col.Field,
+				Values:     entries,
+				ValuesJSON: string(valJSON),
+				IsBoolean:  isBool,
+				IsNumber:   isNum,
+			})
+			colsDecl = append(colsDecl, ColDecl{
+				Name:  "lov" + fmt.Sprintf("%d", len(lovsDecl)) + ".label",
+				Alias: col.Field + "_label",
+			})
+		}
+	}
+	config["columns"] = colsDecl
+	config["lovs"] = lovsDecl
+	config["filters"] = p.Filters
+
+	if os.Getenv("DEBUG_SQL") == "true" {
+	}
+
+	configJSON, _ := json.Marshal(config)
+
+	// 2. Fetch Records
+	useTemplate := os.Getenv("EXPERIMENTAL_SQL_TEMPLATES") == "true"
+	var recordsJSON string
+
+	if useTemplate {
+		// --- EXPERIMENTAL: Go Template Based Generation ---
+		type FilterWrap struct {
+			Column    string
+			IsArray   bool
+			IsBoolean bool
+			IsNumber  bool
+			Values    []string
+			Value     string
+		}
+		filtersWrap := []FilterWrap{}
+		for k, v := range p.Filters {
+			// Skip technical parameters that are not defined as filters in the catalog
+			if _, ok := h.Config.Filters[k]; !ok {
+				continue
+			}
+
+			f := FilterWrap{Column: k}
+			if conf, ok := h.Config.Filters[k]; ok {
+				switch conf.Type {
+				case "boolean":
+					f.IsBoolean = true
+				case "integer", "numeric", "double":
+					f.IsNumber = true
+				}
+			}
+			if len(v) > 1 {
+				f.IsArray = true
+				f.Values = v
+			} else if len(v) == 1 {
+				f.Value = v[0]
+			}
+			filtersWrap = append(filtersWrap, f)
+		}
+
+		tplData := map[string]interface{}{
+			"TableName": h.TableName,
+			"Columns":   colsDecl,
+			"LOVs":      lovsDecl,
+			"Filters":   filtersWrap,
+			"Order":     order,
+			"Limit":     p.Limit,
+			"Offset":    p.Offset,
+		}
+
+		query, err := h.renderSQL("grid.sql", tplData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render grid SQL template: %w", err)
+		}
+		if os.Getenv("DEBUG_SQL") == "true" {
+			fmt.Printf("--- EXPERIMENTAL GRID SQL ---\n%s\n-----------------------------\n", query)
+		}
+		err = tx.QueryRow("SELECT datagrid.datagrid_execute_json($1, $2)", query, string(configJSON)).Scan(&recordsJSON)
+		if err != nil {
+			if os.Getenv("DEBUG_SQL") == "true" {
+				fmt.Printf("--- EXPERIMENTAL SQL EXEC ERROR ---\nError: %v\n----------------------------------\n", err)
+			}
+		}
+	} else {
+		// --- ESTABLISHED: Database Side Execution ---
+		err = tx.QueryRow("SELECT datagrid_execute($1, 'grid', 'json')", string(configJSON)).Scan(&recordsJSON)
+	}
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to execute grid data: %w", err)
 	}
-	defer rows.Close()
 
 	records := []map[string]interface{}{}
-	cols, _ := rows.Columns()
-	for rows.Next() {
-		values := make([]interface{}, len(cols))
-		valuePtrs := make([]interface{}, len(cols))
-		for i := range values {
-			valuePtrs[i] = &values[i]
+	if recordsJSON != "" && recordsJSON != "null" {
+		if err := json.Unmarshal([]byte(recordsJSON), &records); err != nil {
+			return nil, fmt.Errorf("failed to parse grid data: %w", err)
 		}
+	}
 
-		if err := rows.Scan(valuePtrs...); err != nil {
-			return nil, err
-		}
-
-		row := make(map[string]interface{})
-		fullRow := make(map[string]interface{})
-		for i, col := range cols {
-			val := values[i]
-			var renderedVal interface{}
-			if b, ok := val.([]byte); ok {
-				renderedVal = string(b)
-			} else {
-				renderedVal = val
-			}
-			fullRow[col] = renderedVal
-			fullRow[col] = renderedVal
-			row[col] = renderedVal
-		}
-
-		// Forensic DOM: Attach full row metadata
-		if jsonBytes, err := json.Marshal(fullRow); err == nil {
+	// 3. Post-process records (Styling & Metadata)
+	for i, row := range records {
+		if jsonBytes, err := json.Marshal(row); err == nil {
 			row["_json"] = string(jsonBytes)
 		}
 
-		// Calculate Row Styling and Classes
 		var rowStyles []string
 		var rowClasses []string
 		for _, col := range h.Columns {
 			val := row[col.Field]
-			// Find matching LOV item
+			if val == nil {
+				continue
+			}
+
+			if label, ok := row[col.Field+"_label"]; ok && label != nil {
+				row[col.Field] = label
+			}
+
 			for _, item := range col.LOV {
-				// Simple loose comparison via string representation
-				valStr := fmt.Sprintf("%v", val)
-				itemStr := fmt.Sprintf("%v", item.Value)
-				// fmt.Printf("Checking Col: %s, Val: %s, Item: %s, Style: %s\n", col.Field, valStr, itemStr, item.RowStyle) // DEBUG
-				if itemStr == valStr {
+				if fmt.Sprintf("%v", item.Value) == fmt.Sprintf("%v", val) {
 					if item.RowStyle != "" {
 						rowStyles = append(rowStyles, item.RowStyle)
 					}
@@ -770,9 +887,8 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 			}
 		}
 
-		// Apply alternating row styles
 		if len(h.Config.Defaults.RowStyles) > 0 {
-			cycleIdx := len(records) % len(h.Config.Defaults.RowStyles)
+			cycleIdx := i % len(h.Config.Defaults.RowStyles)
 			rowStyles = append(rowStyles, h.Config.Defaults.RowStyles[cycleIdx])
 		}
 
@@ -782,12 +898,6 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 		if len(rowClasses) > 0 {
 			row["_row_class"] = strings.Join(rowClasses, " ")
 		}
-
-		records = append(records, row)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
 	}
 
 	res := &TableResult{
@@ -812,7 +922,7 @@ func (h *Handler) FetchData(p RequestParams) (*TableResult, error) {
 			break
 		}
 	}
-	return res, nil
+	return res, tx.Commit()
 }
 
 func (h *Handler) buildWhere(p RequestParams) (string, []interface{}) {
@@ -1058,6 +1168,57 @@ func TemplateFuncs() template.FuncMap {
 			}
 		},
 	}
+}
+
+// quote_ident is a helper for SQL templates to prevent injection
+func quote_ident(s string) string {
+	if strings.Contains(s, ".") {
+		parts := strings.Split(s, ".")
+		for i, p := range parts {
+			parts[i] = `"` + strings.ReplaceAll(p, `"`, `""`) + `"`
+		}
+		return strings.Join(parts, ".")
+	}
+	return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
+}
+
+// renderSQL renders a Go text/template for SQL generation
+func (h *Handler) renderSQL(tmplName string, data interface{}) (string, error) {
+	// For simplicity in this demo, we'll read from disk.
+	tmplPath := fmt.Sprintf("internal/sql/templates/%s.tmpl", tmplName)
+	content, err := os.ReadFile(tmplPath)
+	if err != nil {
+		return "", err
+	}
+
+	funcMap := template.FuncMap{
+		"add":         func(a, b int) int { return a + b },
+		"quote_ident": quote_ident,
+		"coalesce": func(s ...string) string {
+			for _, v := range s {
+				if v != "" {
+					return v
+				}
+			}
+			return ""
+		},
+	}
+
+	tmpl, err := tt.New(tmplName).Funcs(funcMap).Parse(string(content))
+	if err != nil {
+		return "", err
+	}
+
+	var sb strings.Builder
+	if err := tmpl.Execute(&sb, data); err != nil {
+		return "", err
+	}
+
+	result := sb.String()
+	if os.Getenv("DEBUG_SQL") == "true" {
+		fmt.Printf("--- RENDERED SQL (%s) ---\n%s\n------------------------\n", tmplName, result)
+	}
+	return result, nil
 }
 
 // RenderRow replaces %field% placeholders in a pattern with values from the row
