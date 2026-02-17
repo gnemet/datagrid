@@ -1,0 +1,103 @@
+{
+    "version": "1.0",
+    "title": "Project Performance Overview",
+    "title_hu": "Projekt teljesítmény áttekintés",
+    "type": "query",
+    "icon": "fas fa-chart-bar",
+    "description": "Daily KPIs per project: hours worked, issues opened/closed, and SLA breach rate.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "DATE",
+            "default": "CURRENT_DATE",
+            "input": "date",
+            "description": "End of the report window"
+        },
+        {
+            "name": "project_key",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "text",
+            "description": "Filter to a specific project (NULL = all)"
+        },
+        {
+            "name": "lookback_days",
+            "type": "INTEGER",
+            "default": "30",
+            "input": "number",
+            "description": "Number of days to look back"
+        }
+    ],
+    "sql": "SELECT c.date_actual AS report_date, p.project_key, p.project_name, f.hours_worked, f.closed_issues, f.new_issues, f.open_issues, ROUND(f.sla_breach_rate * 100, 1) AS sla_breach_pct FROM dwh.fact_project_daily_effort f JOIN dwh.dim_project_h p ON f.project_sid = p.project_sid AND upper_inf(p.valid_period) JOIN dwh.dim_calendar c ON f.day_id = c.id WHERE c.date_actual BETWEEN (:effective_date::date - :lookback_days) AND :effective_date::date AND (:project_key IS NULL OR p.project_key = :project_key) ORDER BY c.date_actual DESC, p.project_key",
+    "objects": [
+        {
+            "name": "project_performance_overview",
+            "columns": [
+                {
+                    "name": "report_date",
+                    "type": "DATE"
+                },
+                {
+                    "name": "project_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "project_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "hours_worked",
+                    "type": "NUMERIC"
+                },
+                {
+                    "name": "closed_issues",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "new_issues",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "open_issues",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "sla_breach_pct",
+                    "type": "NUMERIC"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "report_date",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "hours_worked": {
+                "css": "col-number"
+            },
+            "closed_issues": {
+                "css": "col-number"
+            },
+            "new_issues": {
+                "css": "col-number"
+            },
+            "open_issues": {
+                "css": "col-number"
+            },
+            "sla_breach_pct": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "fact_project_daily_effort is pre-aggregated; no heavy joins needed.",
+        "sla_breach_rate is stored as decimal (0.0-1.0); multiplied by 100 for percentage."
+    ]
+}

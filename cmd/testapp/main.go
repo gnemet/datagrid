@@ -167,11 +167,14 @@ func main() {
 			"IsPhosphor":       strings.Contains(strings.ToLower(gridHandler.IconStyleLibrary), "phosphor"),
 			"HasJSONColumn":    hasJsonColumn,
 			"PivotEndpoint":    "/pivot",
-			"ViewMode":         gridHandler.Catalog.Type, // Use catalog type as default mode
+			"ViewMode":         gridHandler.Catalog.Type,
 			"Catalogs":         catalogs,
-
 			"CurrentCatalog":      catParam,
 			"LOVChooserThreshold": cfg.Application.LOVChooserThreshold,
+			"IsQueryMode":         gridHandler.IsQueryMode,
+			"QueryParams":         gridHandler.QueryParams,
+			"ExecuteEndpoint":     "/execute",
+			"CurrentUser":         "",
 		}
 
 		tmpl.ExecuteTemplate(w, "index.html", data)
@@ -227,6 +230,25 @@ func main() {
 		}
 		gridHandler.ServeHTTP(w, r)
 
+	})
+
+	http.HandleFunc("/execute", func(w http.ResponseWriter, r *http.Request) {
+		catParam := r.URL.Query().Get("config")
+		if catParam == "" {
+			catParam = "query_demo"
+		}
+		catPath := fmt.Sprintf("internal/data/catalog/%s.json", catParam)
+		gridHandler, err := datagrid.NewHandlerFromCatalog(db, catPath, "en")
+		if err != nil {
+			log.Printf("Error loading catalog %s: %v", catParam, err)
+			http.Error(w, fmt.Sprintf("Error loading catalog: %v", err), http.StatusInternalServerError)
+			return
+		}
+		gridHandler.LOVChooserThreshold = cfg.Application.LOVChooserThreshold
+		gridHandler.ListEndpoint = "/list?config=" + catParam
+		gridHandler.ExecuteEndpoint = "/execute?config=" + catParam
+		gridHandler.AppName = "Personnel Analytics"
+		gridHandler.ExecuteQuery(w, r)
 	})
 
 	fmt.Printf("Server starting at http://localhost:%s\n", cfg.Server.Port)

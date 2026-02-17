@@ -1,0 +1,98 @@
+{
+    "version": "1.0",
+    "title": "SLA Breach Report",
+    "title_hu": "SLA megszegési jelentés",
+    "type": "query",
+    "icon": "fas fa-exclamation-triangle",
+    "description": "Breached SLA events with priority and issue details, for compliance monitoring.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "DATE",
+            "default": "CURRENT_DATE",
+            "input": "date",
+            "description": "End of the report window"
+        },
+        {
+            "name": "lookback_days",
+            "type": "INTEGER",
+            "default": "90",
+            "input": "number",
+            "description": "Number of days to look back"
+        },
+        {
+            "name": "project_key",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "text",
+            "description": "Filter to a specific project (NULL = all)"
+        }
+    ],
+    "sql": "SELECT i.issue_key, i.summary, pr.priority_name, f.event_type, f.duration_sec, ROUND(f.duration_sec / 3600.0, 1) AS duration_hours, lower(f.valid_period) AS breach_date, p.project_key, p.project_name FROM dwh.fact_sla_h f JOIN dwh.dim_issue_h i ON f.issue_id = i.issue_id AND upper_inf(i.valid_period) LEFT JOIN dwh.dim_priority_h pr ON f.priority_sid = pr.priority_sid AND upper_inf(pr.valid_period) JOIN dwh.dim_project_h p ON i.issue_key LIKE p.project_key || '-%' AND upper_inf(p.valid_period) WHERE f.is_breached = TRUE AND upper_inf(f.valid_period) AND lower(f.valid_period) >= (:effective_date::date - :lookback_days) AND (:project_key IS NULL OR p.project_key = :project_key) ORDER BY breach_date DESC",
+    "objects": [
+        {
+            "name": "sla_breach_report",
+            "columns": [
+                {
+                    "name": "issue_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "summary",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "priority_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "event_type",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "duration_sec",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "duration_hours",
+                    "type": "NUMERIC"
+                },
+                {
+                    "name": "breach_date",
+                    "type": "TIMESTAMPTZ"
+                },
+                {
+                    "name": "project_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "project_name",
+                    "type": "TEXT"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "breach_date",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "duration_sec": {
+                "css": "col-number"
+            },
+            "duration_hours": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "fact_sla_h.issue_id is a Jira internal ID; joins to dim_issue_h.issue_id.",
+        "duration_sec is the total elapsed time of the SLA event."
+    ]
+}

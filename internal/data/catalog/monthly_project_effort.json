@@ -1,0 +1,108 @@
+{
+    "version": "1.0",
+    "title": "Monthly Project Effort",
+    "title_hu": "Havi projekt ráfordítás",
+    "type": "query",
+    "icon": "fas fa-calendar-alt",
+    "description": "Monthly aggregated hours and worklog counts per project and user, for cost allocation and management reporting.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "DATE",
+            "default": "CURRENT_DATE",
+            "input": "date",
+            "description": "Reference date (uses the month containing this date)"
+        },
+        {
+            "name": "project_key",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "text",
+            "description": "Filter to a specific project (NULL = all)"
+        }
+    ],
+    "sql": "SELECT c.year, c.month_enum AS month_num, c.month_name, p.project_key, p.project_name, u.user_key, u.full_name, u.department, SUM(f.hours_worked) AS total_hours, COUNT(DISTINCT f.worklog_key) AS worklog_entries, COUNT(DISTINCT i.issue_key) AS distinct_issues FROM dwh.fact_daily_worklogs_h f JOIN dwh.dim_calendar c ON f.calendar_id = c.id JOIN dwh.dim_user_h u ON f.user_sid = u.user_sid AND upper_inf(u.valid_period) JOIN dwh.dim_project_h p ON f.project_sid = p.project_sid AND upper_inf(p.valid_period) JOIN dwh.dim_issue_h i ON f.issue_sid = i.issue_sid AND upper_inf(i.valid_period) WHERE upper_inf(f.valid_period) AND c.month_range @> :effective_date::date AND (:project_key IS NULL OR p.project_key = :project_key) GROUP BY c.year, c.month_enum, c.month_name, p.project_key, p.project_name, u.user_key, u.full_name, u.department ORDER BY p.project_key, total_hours DESC",
+    "objects": [
+        {
+            "name": "monthly_project_effort",
+            "columns": [
+                {
+                    "name": "year",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "month_num",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "month_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "project_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "project_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "user_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "full_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "department",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "total_hours",
+                    "type": "NUMERIC"
+                },
+                {
+                    "name": "worklog_entries",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "distinct_issues",
+                    "type": "INTEGER"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "total_hours",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "year": {
+                "css": "col-number"
+            },
+            "month_num": {
+                "css": "col-number"
+            },
+            "total_hours": {
+                "css": "col-number"
+            },
+            "worklog_entries": {
+                "css": "col-number"
+            },
+            "distinct_issues": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "Uses dim_calendar.month_range (DATERANGE) for month membership.",
+        "rpt_monthly_project_worklogs materialized view provides a pre-calculated alternative."
+    ]
+}

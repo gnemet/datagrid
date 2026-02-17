@@ -153,22 +153,18 @@
     </div>
 
     <div class="grid-main-layout">
+        {{if .IsQueryMode}}
+        {{template "params_form" .}}
+        {{else}}
         <div id="datagrid-main-view" class="dg-grid-container"
             hx-get="{{.ListEndpoint}}{{if contains .ListEndpoint `?`}}&{{else}}?{{end}}mode={{if eq .ViewMode `pivot` }}pivot{{else}}grid{{end}}"
             hx-trigger="load" hx-include=".search-input, #datagrid-filter-form, .dg-select, [name='config']">
-
-
-
-
-
-
-
-
             <div class="loading-state">
                 <i class="{{if .IsPhosphor}}ph ph-circle-notched ph-spin{{else}}fas fa-spinner fa-spin{{end}}"></i>
                 Loading...
             </div>
         </div>
+        {{end}}
 
         <!-- Right Sidebar for Record Detail -->
         <aside id="datagrid-detail-sidebar" class="sidebar-detail sidebar-right-panel collapsed">

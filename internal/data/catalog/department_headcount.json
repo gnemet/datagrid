@@ -1,0 +1,96 @@
+{
+    "version": "1.0",
+    "title": "Department Headcount",
+    "title_hu": "Létszám osztályonként",
+    "type": "query",
+    "icon": "fas fa-users",
+    "description": "Active employees grouped by department, with LDAP enrichment. Shows active vs. inactive counts, technical user flags, and Jira activity status.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "TIMESTAMPTZ",
+            "default": "CURRENT_TIMESTAMP",
+            "input": "date",
+            "description": "Point-in-time for historized lookup"
+        },
+        {
+            "name": "department",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "lov:SELECT code, name FROM dwh.lov_department()",
+            "description": "Filter to a specific department (NULL = all)"
+        }
+    ],
+    "sql": "SELECT COALESCE(u.department, 'Unknown') AS department, COUNT(*) FILTER (WHERE u.is_active) AS active_count, COUNT(*) FILTER (WHERE NOT u.is_active) AS inactive_count, COUNT(*) AS total_count, COUNT(*) FILTER (WHERE u.is_technical) AS technical_users, COUNT(*) FILTER (WHERE u.has_jira_activity) AS jira_active_users, ROUND(100.0 * COUNT(*) FILTER (WHERE u.has_jira_activity) / NULLIF(COUNT(*) FILTER (WHERE u.is_active), 0), 1) AS jira_adoption_pct FROM dwh.dim_user_h u LEFT JOIN dwh.ldap l ON u.user_key = l.user_key WHERE u.valid_period @> :effective_date::timestamptz AND NOT u.is_technical AND (:department IS NULL OR u.department ILIKE '%' || :department || '%') GROUP BY COALESCE(u.department, 'Unknown') ORDER BY active_count DESC",
+    "objects": [
+        {
+            "name": "department_headcount",
+            "columns": [
+                {
+                    "name": "department",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "active_count",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "inactive_count",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "total_count",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "technical_users",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "jira_active_users",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "jira_adoption_pct",
+                    "type": "NUMERIC"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "active_count",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "active_count": {
+                "css": "col-number"
+            },
+            "inactive_count": {
+                "css": "col-number"
+            },
+            "total_count": {
+                "css": "col-number"
+            },
+            "technical_users": {
+                "css": "col-number"
+            },
+            "jira_active_users": {
+                "css": "col-number"
+            },
+            "jira_adoption_pct": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "is_technical excludes system/robot accounts from headcount.",
+        "has_jira_activity indicates whether a user has ever logged work or been assigned issues.",
+        "jira_adoption_pct shows what percentage of active users actually use Jira."
+    ]
+}

@@ -1,0 +1,114 @@
+{
+    "version": "1.0",
+    "title": "User Productivity KPI",
+    "title_hu": "Egyéni termelékenységi KPI",
+    "type": "query",
+    "icon": "fas fa-user-clock",
+    "description": "Daily productivity metrics per individual user: hours, issues, and SLA breaches.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "DATE",
+            "default": "CURRENT_DATE",
+            "input": "date",
+            "description": "End of the report window"
+        },
+        {
+            "name": "current_user",
+            "type": "TEXT",
+            "default": "Session user",
+            "input": "constant:current_user",
+            "description": "Filter to a specific user"
+        },
+        {
+            "name": "lookback_days",
+            "type": "INTEGER",
+            "default": "30",
+            "input": "number",
+            "description": "Number of days to look back"
+        }
+    ],
+    "sql": "SELECT c.date_actual AS report_date, u.user_key, u.full_name, u.department, f.hours_worked, f.closed_issues, f.new_issues, f.open_issues, f.aging_issues, f.sla_breaches FROM dwh.fact_user_daily_kpi f JOIN dwh.dim_user_h u ON f.user_sid = u.user_sid AND upper_inf(u.valid_period) JOIN dwh.dim_calendar c ON f.day_id = c.id WHERE u.user_key = :current_user AND c.date_actual BETWEEN (:effective_date::date - :lookback_days) AND :effective_date::date ORDER BY c.date_actual DESC",
+    "objects": [
+        {
+            "name": "user_productivity_kpi",
+            "columns": [
+                {
+                    "name": "report_date",
+                    "type": "DATE"
+                },
+                {
+                    "name": "user_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "full_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "department",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "hours_worked",
+                    "type": "NUMERIC"
+                },
+                {
+                    "name": "closed_issues",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "new_issues",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "open_issues",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "aging_issues",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "sla_breaches",
+                    "type": "INTEGER"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "report_date",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "hours_worked": {
+                "css": "col-number"
+            },
+            "closed_issues": {
+                "css": "col-number"
+            },
+            "new_issues": {
+                "css": "col-number"
+            },
+            "open_issues": {
+                "css": "col-number"
+            },
+            "aging_issues": {
+                "css": "col-number"
+            },
+            "sla_breaches": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "To query an entire team, replace u.user_key = :current_user with u.user_key = ANY(dwh.user_get_subordinate_keys(:current_user)).",
+        "aging_issues counts issues open longer than 30 days."
+    ]
+}

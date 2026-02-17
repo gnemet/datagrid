@@ -1,0 +1,87 @@
+{
+    "version": "1.0",
+    "title": "Issue Aging Report",
+    "title_hu": "Feladat öregedési jelentés",
+    "type": "query",
+    "icon": "fas fa-hourglass-end",
+    "description": "Open issues exceeding a configurable age threshold, by project and assignee.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "DATE",
+            "default": "CURRENT_DATE",
+            "input": "date",
+            "description": "Snapshot date"
+        },
+        {
+            "name": "aging_threshold_days",
+            "type": "INTEGER",
+            "default": "30",
+            "input": "number",
+            "description": "Minimum number of days open to include"
+        },
+        {
+            "name": "project_key",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "text",
+            "description": "Filter to a specific project (NULL = all)"
+        }
+    ],
+    "sql": "SELECT p.project_key, p.project_name, i.issue_key, i.summary, s.assignee, s.canonical_status, s.open_days FROM dwh.fact_issue_daily_snapshot s JOIN dwh.dim_issue_h i ON s.issue_sid = i.issue_sid AND upper_inf(i.valid_period) JOIN dwh.dim_project_h p ON s.project_sid = p.project_sid AND upper_inf(p.valid_period) WHERE s.day_id = (SELECT id FROM dwh.dim_calendar WHERE date_actual = :effective_date::date) AND s.is_open = TRUE AND s.open_days >= :aging_threshold_days AND (:project_key IS NULL OR p.project_key = :project_key) ORDER BY s.open_days DESC, p.project_key",
+    "objects": [
+        {
+            "name": "issue_aging_report",
+            "columns": [
+                {
+                    "name": "project_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "project_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "issue_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "summary",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "assignee",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "canonical_status",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "open_days",
+                    "type": "INTEGER"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "open_days",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "open_days": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "open_days tracks how long the issue has been continuously open.",
+        "Combine with dim_user_h for assignee full name or department."
+    ]
+}

@@ -1,0 +1,89 @@
+{
+    "version": "1.0",
+    "title": "Employee Hierarchy",
+    "title_hu": "Munkatársi hierarchia",
+    "type": "query",
+    "icon": "fas fa-sitemap",
+    "description": "Recursive management tree showing reporting lines for a given manager, enriched with LDAP data.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "TIMESTAMPTZ",
+            "default": "CURRENT_TIMESTAMP",
+            "input": "date",
+            "description": "Point-in-time for historized lookup"
+        },
+        {
+            "name": "current_user",
+            "type": "TEXT",
+            "default": "Session user",
+            "input": "constant:current_user",
+            "description": "Root manager for the hierarchy"
+        }
+    ],
+    "sql": "WITH RECURSIVE org_tree AS (SELECT u.user_key, u.full_name, u.department, u.post, u.manager_key, u.is_active, 0 AS depth FROM dwh.dim_user_h u WHERE u.user_key = :current_user AND u.valid_period @> :effective_date::timestamptz UNION ALL SELECT u.user_key, u.full_name, u.department, u.post, u.manager_key, u.is_active, t.depth + 1 FROM dwh.dim_user_h u INNER JOIN org_tree t ON u.manager_key = t.user_key WHERE u.valid_period @> :effective_date::timestamptz AND u.is_active = TRUE) SELECT ot.depth, REPEAT('  ', ot.depth) || ot.full_name AS indented_name, ot.user_key, ot.full_name, ot.department, ot.post, ot.manager_key, ot.is_active, l.email FROM org_tree ot LEFT JOIN dwh.ldap l ON ot.user_key = l.user_key ORDER BY ot.depth, ot.full_name",
+    "objects": [
+        {
+            "name": "employee_hierarchy",
+            "columns": [
+                {
+                    "name": "depth",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "indented_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "user_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "full_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "department",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "post",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "manager_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "is_active",
+                    "type": "BOOLEAN"
+                },
+                {
+                    "name": "email",
+                    "type": "TEXT"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "depth",
+            "sort_direction": "asc"
+        },
+        "columns": {
+            "depth": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "depth column indicates the level in the tree (0 = root manager).",
+        "indented_name provides a text-based visual tree for report output.",
+        "For a flat list of subordinate keys only, use dwh.user_get_subordinate_keys()."
+    ]
+}

@@ -1,0 +1,125 @@
+{
+    "version": "1.0",
+    "title": "Daily Worklog Trend",
+    "title_hu": "Napi munkaidő trend",
+    "type": "query",
+    "icon": "fas fa-chart-area",
+    "description": "Daily total hours logged across all projects, with active user and project counts.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "DATE",
+            "default": "2026-01-31",
+            "input": "date",
+            "description": "End date for the trend"
+        },
+        {
+            "name": "days",
+            "type": "INTEGER",
+            "default": "30",
+            "input": "select:7,14,30,60",
+            "description": "Number of days to look back"
+        }
+    ],
+    "sql": "SELECT c.date_actual, c.day_name, ROUND(SUM(f.hours_worked)::numeric, 1) AS total_hours, COUNT(DISTINCT f.user_sid) AS active_users, COUNT(DISTINCT f.project_sid) AS active_projects, COUNT(DISTINCT f.worklog_key) AS worklog_entries FROM dwh.fact_daily_worklogs_h f JOIN dwh.dim_calendar c ON f.calendar_id = c.id WHERE upper_inf(f.valid_period) AND c.date_actual >= :effective_date::date - :days AND c.date_actual <= :effective_date::date GROUP BY c.date_actual, c.day_name, c.id ORDER BY c.id",
+    "objects": [
+        {
+            "name": "daily_worklog_trend",
+            "columns": [
+                {
+                    "name": "date_actual",
+                    "type": "DATE",
+                    "labels": {
+                        "en": "Date",
+                        "hu": "Dátum"
+                    }
+                },
+                {
+                    "name": "day_name",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Day",
+                        "hu": "Nap"
+                    }
+                },
+                {
+                    "name": "total_hours",
+                    "type": "NUMERIC",
+                    "labels": {
+                        "en": "Total Hours",
+                        "hu": "Összes óra"
+                    }
+                },
+                {
+                    "name": "active_users",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Active Users",
+                        "hu": "Aktív felhasználók"
+                    }
+                },
+                {
+                    "name": "active_projects",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Active Projects",
+                        "hu": "Aktív projektek"
+                    }
+                },
+                {
+                    "name": "worklog_entries",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Entries",
+                        "hu": "Bejegyzések"
+                    }
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "date_actual",
+            "sort_direction": "asc"
+        },
+        "columns": {
+            "total_hours": {
+                "css": "col-number",
+                "labels": {
+                    "en": "Total Hours",
+                    "hu": "Összes óra"
+                }
+            },
+            "active_users": {
+                "css": "col-number",
+                "labels": {
+                    "en": "Active Users",
+                    "hu": "Aktív felhasználók"
+                }
+            },
+            "active_projects": {
+                "css": "col-number",
+                "labels": {
+                    "en": "Active Projects",
+                    "hu": "Aktív projektek"
+                }
+            },
+            "worklog_entries": {
+                "css": "col-number",
+                "labels": {
+                    "en": "Entries",
+                    "hu": "Bejegyzések"
+                }
+            }
+        }
+    },
+    "notes": [
+        "Each row represents one calendar day with total hours logged.",
+        "Days with zero worklogs won't appear (no LEFT JOIN to calendar)."
+    ]
+}

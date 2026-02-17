@@ -1,0 +1,100 @@
+{
+    "version": "1.0",
+    "title": "Issue Type Distribution",
+    "title_hu": "Feladattípus eloszlás",
+    "type": "query",
+    "icon": "fas fa-tags",
+    "description": "Issue counts grouped by type and status, with resolved/unresolved breakdown.",
+    "parameters": [
+        {
+            "name": "project_key",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "lov:SELECT code, name FROM dwh.lov_project()",
+            "description": "Filter by project (NULL = all)"
+        }
+    ],
+    "sql": "SELECT COALESCE(mit.category, 'Type:' || i.issuetype) AS issue_type, COALESCE(ds.status_name, 'Status:' || i.issuestatus) AS status_name, COALESCE(ds.status_category_name, '') AS status_category, COUNT(*) AS issue_count, COUNT(*) FILTER (WHERE i.resolution IS NULL OR i.resolution = '') AS unresolved, COUNT(*) FILTER (WHERE i.resolution IS NOT NULL AND i.resolution != '') AS resolved FROM dwh.dim_issue_h i LEFT JOIN dwh.map_issue_type mit ON i.issuetype = mit.issuetype::text LEFT JOIN dwh.dim_status ds ON i.issuestatus = ds.status_key WHERE upper_inf(i.valid_period) AND (:project_key IS NULL OR split_part(i.issue_key, '-', 1) = :project_key) GROUP BY mit.category, i.issuetype, ds.status_name, i.issuestatus, ds.status_category_name ORDER BY issue_count DESC",
+    "objects": [
+        {
+            "name": "issue_type_effort",
+            "columns": [
+                {
+                    "name": "issue_type",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Issue Type",
+                        "hu": "Feladattípus"
+                    }
+                },
+                {
+                    "name": "status_name",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Status",
+                        "hu": "Státusz"
+                    }
+                },
+                {
+                    "name": "status_category",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Status Category",
+                        "hu": "Státusz kategória"
+                    }
+                },
+                {
+                    "name": "issue_count",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Count",
+                        "hu": "Darabszám"
+                    }
+                },
+                {
+                    "name": "unresolved",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Unresolved",
+                        "hu": "Megoldatlan"
+                    }
+                },
+                {
+                    "name": "resolved",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Resolved",
+                        "hu": "Megoldott"
+                    }
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "issue_count",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "issue_count": {
+                "css": "col-number"
+            },
+            "unresolved": {
+                "css": "col-number"
+            },
+            "resolved": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "Issue types resolved via dwh.map_issue_type (e.g. 3 -> Task, 6 -> Epic).",
+        "Statuses resolved via dwh.dim_status.",
+        "Falls back to raw code if lookup is missing."
+    ]
+}

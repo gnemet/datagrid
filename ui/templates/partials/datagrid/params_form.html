@@ -1,0 +1,76 @@
+{{define "params_form"}}
+<div class="dg-params-panel">
+    <div class="dg-params-header">
+        <i class="fas fa-sliders-h"></i>
+        <span>Query Parameters</span>
+        <button type="button" class="dg-btn-icon dg-params-toggle" onclick="this.closest('.dg-params-panel').classList.toggle('collapsed')" title="Toggle Parameters">
+            <i class="fas fa-chevron-up"></i>
+        </button>
+    </div>
+
+    <form id="dg-params-form" class="dg-params-body"
+          hx-post="{{.ExecuteEndpoint}}{{if .CurrentCatalog}}?config={{.CurrentCatalog}}{{end}}"
+          hx-target="#dg-query-results"
+          hx-indicator="#dg-query-spinner">
+
+        <div class="dg-params-grid">
+            {{range .QueryParams}}
+            {{$itype := inputType .}}
+
+            {{if eq $itype "constant"}}
+            <input type="hidden" name="{{.Name}}" value="{{$.CurrentUser}}">
+            {{else}}
+            <div class="dg-param-field">
+                <label for="param-{{.Name}}">{{displayLabel .}}</label>
+
+                {{if eq $itype "date"}}
+                <input type="date" id="param-{{.Name}}" name="{{.Name}}" value="{{.ResolvedDefault}}" class="dg-param-input">
+                {{else if eq $itype "number"}}
+                <input type="number" id="param-{{.Name}}" name="{{.Name}}" value="{{.ResolvedDefault}}" class="dg-param-input">
+                {{else if eq $itype "select"}}
+                <select id="param-{{.Name}}" name="{{.Name}}" class="dg-param-input">
+                    <option value="">— All —</option>
+                    {{range .Options}}
+                    <option value="{{.Value}}">{{.Label}}</option>
+                    {{end}}
+                </select>
+                {{else if eq $itype "lov"}}
+                <select id="param-{{.Name}}" name="{{.Name}}" class="dg-param-input">
+                    <option value="">— All —</option>
+                    {{range .Options}}
+                    <option value="{{.Value}}">{{.Label}}</option>
+                    {{end}}
+                </select>
+                {{else}}
+                <input type="text" id="param-{{.Name}}" name="{{.Name}}" value="{{.ResolvedDefault}}" placeholder="{{.Description}}" class="dg-param-input">
+                {{end}}
+
+                {{if .Description}}
+                <span class="dg-param-hint">{{.Description}}</span>
+                {{end}}
+            </div>
+            {{end}}
+            {{end}}
+        </div>
+
+        <div class="dg-params-actions">
+            <button type="submit" class="dg-btn dg-btn-primary">
+                <i class="fas fa-play"></i> Run Query
+            </button>
+            <button type="reset" class="dg-btn dg-btn-secondary" onclick="setTimeout(function(){htmx.trigger('#dg-params-form','submit')}, 50)">
+                <i class="fas fa-undo"></i> Reset
+            </button>
+            <span id="dg-query-spinner" class="htmx-indicator">
+                <i class="fas fa-spinner fa-spin"></i> Running...
+            </span>
+        </div>
+    </form>
+</div>
+
+<div id="dg-query-results" class="dg-query-results">
+    <div class="dg-empty-state">
+        <i class="fas fa-play-circle"></i>
+        <p>Set parameters and click <strong>Run Query</strong> to see results</p>
+    </div>
+</div>
+{{end}}

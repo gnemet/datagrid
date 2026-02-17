@@ -1,0 +1,201 @@
+/* ===== Query Parameters Panel ===== */
+
+.dg-params-panel {
+    background: var(--dg-sidebar-bg, #1e293b);
+    border: 1px solid var(--dg-border, rgba(255,255,255,0.08));
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.dg-params-panel.collapsed .dg-params-body {
+    display: none;
+}
+
+.dg-params-panel.collapsed .dg-params-toggle i {
+    transform: rotate(180deg);
+}
+
+.dg-params-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--dg-toolbar-bg, rgba(255,255,255,0.04));
+    border-bottom: 1px solid var(--dg-border, rgba(255,255,255,0.08));
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--dg-text, #e2e8f0);
+}
+
+.dg-params-header i {
+    color: var(--dg-accent, #60a5fa);
+}
+
+.dg-params-toggle {
+    margin-left: auto;
+}
+
+.dg-params-toggle i {
+    transition: transform 0.3s ease;
+}
+
+.dg-params-body {
+    padding: 16px;
+}
+
+.dg-params-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.dg-param-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dg-param-field label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--dg-muted, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dg-param-input {
+    background: var(--dg-input-bg, rgba(255,255,255,0.06));
+    border: 1px solid var(--dg-border, rgba(255,255,255,0.12));
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--dg-text, #e2e8f0);
+    font-size: 0.85rem;
+    font-family: inherit;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dg-param-input:focus {
+    outline: none;
+    border-color: var(--dg-accent, #60a5fa);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+}
+
+.dg-param-input option {
+    background: var(--dg-sidebar-bg, #1e293b);
+    color: var(--dg-text, #e2e8f0);
+}
+
+.dg-param-hint {
+    font-size: 0.7rem;
+    color: var(--dg-muted, #64748b);
+    opacity: 0.7;
+}
+
+.dg-params-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--dg-border, rgba(255,255,255,0.06));
+}
+
+.dg-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    border-radius: 6px;
+    border: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dg-btn-primary {
+    background: var(--dg-accent, #3b82f6);
+    color: #fff;
+}
+
+.dg-btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.dg-btn-secondary {
+    background: rgba(255,255,255,0.06);
+    color: var(--dg-muted, #94a3b8);
+    border: 1px solid var(--dg-border, rgba(255,255,255,0.1));
+}
+
+.dg-btn-secondary:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--dg-text, #e2e8f0);
+}
+
+/* Query Results Area */
+.dg-query-results {
+    min-height: 200px;
+}
+
+.dg-query-row-count {
+    padding: 8px 16px;
+    font-size: 0.78rem;
+    color: var(--dg-muted, #94a3b8);
+    border-bottom: 1px solid var(--dg-border, rgba(255,255,255,0.06));
+}
+
+.dg-query-row-count i {
+    color: var(--dg-accent, #60a5fa);
+    margin-right: 4px;
+}
+
+.dg-query-error {
+    padding: 16px 20px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    color: #fca5a5;
+    font-size: 0.85rem;
+}
+
+.dg-query-error i {
+    color: #f87171;
+    margin-right: 6px;
+}
+
+.dg-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: var(--dg-muted, #64748b);
+    text-align: center;
+}
+
+.dg-empty-state i {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.dg-empty-state p {
+    font-size: 0.9rem;
+}
+
+/* HTMX Indicator */
+.htmx-indicator {
+    display: none;
+    color: var(--dg-accent, #60a5fa);
+    font-size: 0.82rem;
+}
+.htmx-request .htmx-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}

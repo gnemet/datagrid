@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	tt "text/template"
+	"time"
 )
 
 // UIAssets embeds the standardized CSS, JS and Templates
@@ -46,13 +49,15 @@ type LOVItem struct {
 
 // Catalog structures for MIGR/JiraMntr compatibility
 type Catalog struct {
-	Version  string         `json:"version"`
-	Title    string         `json:"title,omitempty"`
-	Icon     string         `json:"icon,omitempty"`
-	Type     string         `json:"type,omitempty"`
-	CSSClass string         `json:"css_class,omitempty"`
-	Datagrid DatagridConfig `json:"datagrid,omitempty"`
-	Objects  []ObjectDef    `json:"objects"`
+	Version    string         `json:"version"`
+	Title      string         `json:"title,omitempty"`
+	Icon       string         `json:"icon,omitempty"`
+	Type       string         `json:"type,omitempty"`
+	CSSClass   string         `json:"css_class,omitempty"`
+	Datagrid   DatagridConfig `json:"datagrid,omitempty"`
+	Objects    []ObjectDef    `json:"objects"`
+	Parameters []QueryParam   `json:"parameters,omitempty"`
+	SQL        string         `json:"sql,omitempty"`
 }
 
 type DatagridConfig struct {
@@ -145,6 +150,60 @@ type FilterDef struct {
 	Type   string `json:"type"` // text, number, boolean, int_bool
 }
 
+// QueryParam describes a query parameter from the catalog JSON.
+type QueryParam struct {
+	Name            string    `json:"name"`
+	Type            string    `json:"type"`              // DATE, TEXT, INTEGER, NUMERIC
+	Default         string    `json:"default"`           // CURRENT_DATE, NULL, or literal
+	Input           string    `json:"input"`             // date, number, text, select:a,b,c, lov:SELECT..., constant:current_user
+	Description     string    `json:"description"`
+	Label           string    `json:"label,omitempty"`   // Display label (auto-generated from name if empty)
+	Options         []LOVItem `json:"options,omitempty"` // Resolved at load time for select/lov
+	ResolvedDefault string    `json:"-"`                // Resolved default for HTML inputs
+}
+
+// InputType returns the HTML input type for the parameter.
+func (p QueryParam) InputType() string {
+	switch {
+	case p.Input == "date" || p.Input == "datetime":
+		return "date"
+	case p.Input == "number":
+		return "number"
+	case strings.HasPrefix(p.Input, "constant:"):
+		return "constant"
+	case strings.HasPrefix(p.Input, "lov:"):
+		return "lov"
+	case strings.HasPrefix(p.Input, "select:"):
+		return "select"
+	default:
+		return "text"
+	}
+}
+
+// ConstantKey returns the constant type (e.g. "current_user") for constant params.
+func (p QueryParam) ConstantKey() string {
+	if strings.HasPrefix(p.Input, "constant:") {
+		return strings.TrimPrefix(p.Input, "constant:")
+	}
+	return ""
+}
+
+// DisplayLabel returns the label for display, auto-generating from name if empty.
+func (p QueryParam) DisplayLabel() string {
+	if p.Label != "" {
+		return p.Label
+	}
+	// Title case from snake_case
+	name := strings.ReplaceAll(p.Name, "_", " ")
+	words := strings.Fields(name)
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
+}
+
 type DatagridColumnDef struct {
 	Visible *bool             `json:"visible,omitempty"`
 	CSS     string            `json:"css,omitempty"`
@@ -203,6 +262,10 @@ type TableResult struct {
 	Catalogs    map[string]string
 	LangsJSON   string
 	CurrentLang string
+	QueryParams     []QueryParam
+	IsQueryMode     bool
+	ExecuteEndpoint string
+	CurrentUser     string
 }
 
 // Handler handles the grid data requests
@@ -216,9 +279,14 @@ type Handler struct {
 	IconStyleLibrary    string
 	ListEndpoint        string // Default endpoint for HTMX updates
 	PivotEndpoint       string // Endpoint for pivot data
+	ExecuteEndpoint     string // Endpoint for query execution
 	LOVChooserThreshold int
 	AppName             string
 	Catalogs            map[string]string
+	QueryParams         []QueryParam // Resolved parameters (with LOV options populated)
+	QuerySQL            string       // Raw SQL template with :param placeholders
+	IsQueryMode         bool         // true when catalog type == "query"
+	CurrentUser         string       // Set by host app for constant:current_user resolution
 }
 
 func NewHandler(db *sql.DB, tableName string, cols []UIColumn, cfg DatagridConfig) *Handler {
@@ -477,7 +545,7 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		iconStyle = "FontAwesome"
 	}
 
-	return &Handler{
+	h := &Handler{
 		DB:               db,
 		TableName:        obj.Name,
 		Columns:          uiCols,
@@ -485,7 +553,60 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		Catalog:          cat,
 		Lang:             lang,
 		IconStyleLibrary: iconStyle,
-	}, nil
+	}
+
+	// Query mode: resolve parameters from catalog
+	if strings.ToLower(cat.Type) == "query" && len(cat.Parameters) > 0 {
+		h.IsQueryMode = true
+		h.QuerySQL = cat.SQL
+
+		today := time.Now().Format("2006-01-02")
+		params := make([]QueryParam, len(cat.Parameters))
+		copy(params, cat.Parameters)
+
+		for i := range params {
+			// Resolve select options
+			if strings.HasPrefix(params[i].Input, "select:") {
+				opts := strings.TrimPrefix(params[i].Input, "select:")
+				for _, o := range strings.Split(opts, ",") {
+					o = strings.TrimSpace(o)
+					if o != "" {
+						params[i].Options = append(params[i].Options, LOVItem{Value: o, Label: o})
+					}
+				}
+			}
+
+			// Resolve LOV options from DB
+			if strings.HasPrefix(params[i].Input, "lov:") {
+				lovSQL := strings.TrimPrefix(params[i].Input, "lov:")
+				if lovSQL != "" {
+					rows, err := db.Query(lovSQL)
+					if err == nil {
+						defer rows.Close()
+						for rows.Next() {
+							var val string
+							if err := rows.Scan(&val); err == nil {
+								params[i].Options = append(params[i].Options, LOVItem{Value: val, Label: val})
+							}
+						}
+					} else {
+						log.Printf("LOV query error for param %s: %v", params[i].Name, err)
+					}
+				}
+			}
+
+			// Resolve default dates
+			def := params[i].Default
+			if def == "CURRENT_DATE" || def == "CURRENT_TIMESTAMP" {
+				params[i].ResolvedDefault = today
+			} else if def != "" && def != "NULL" && def != "Session user" {
+				params[i].ResolvedDefault = def
+			}
+		}
+		h.QueryParams = params
+	}
+
+	return h, nil
 }
 
 func processLovItem(item LOVItem, lang string) LOVItem {
@@ -645,6 +766,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		gridRes.App.Name = h.AppName
 		gridRes.LangsJSON = `[{"code":"en","label":"EN"},{"code":"hu","label":"HU"}]`
 		gridRes.CurrentLang = h.Lang
+		gridRes.QueryParams = h.QueryParams
+		gridRes.IsQueryMode = h.IsQueryMode
+		gridRes.ExecuteEndpoint = h.ExecuteEndpoint
+		gridRes.CurrentUser = h.CurrentUser
 
 		if r.Header.Get("HX-Request") != "" {
 			funcs := TemplateFuncs()
@@ -672,6 +797,239 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ExecuteQuery runs a parameterized query and returns results as a datagrid table.
+func (h *Handler) ExecuteQuery(w http.ResponseWriter, r *http.Request) {
+	if !h.IsQueryMode {
+		http.Error(w, "Not a query-mode catalog", http.StatusBadRequest)
+		return
+	}
+
+	// Build SQL with parameter substitution
+	sqlQuery := h.QuerySQL
+
+	// Strip SQL comments
+	lines := strings.Split(sqlQuery, "\n")
+	var cleanLines []string
+	for _, l := range lines {
+		trimmed := strings.TrimSpace(l)
+		if strings.HasPrefix(trimmed, "--") {
+			continue
+		}
+		cleanLines = append(cleanLines, l)
+	}
+	sqlQuery = strings.Join(cleanLines, "\n")
+
+	// Protect PostgreSQL :: type casts from param replacement
+	const castPlaceholder = "\x00CAST\x00"
+	sqlQuery = strings.ReplaceAll(sqlQuery, "::", castPlaceholder)
+
+	for _, p := range h.QueryParams {
+		placeholder := ":" + p.Name
+		var val string
+
+		// Constants are resolved server-side
+		if strings.HasPrefix(p.Input, "constant:") {
+			switch p.ConstantKey() {
+			case "current_user":
+				val = h.CurrentUser
+			default:
+				val = p.Default
+			}
+		} else {
+			val = r.FormValue(p.Name)
+		}
+
+		if val == "" {
+			def := p.Default
+			switch {
+			case def == "CURRENT_TIMESTAMP" || def == "CURRENT_DATE":
+				sqlQuery = strings.ReplaceAll(sqlQuery, placeholder, def)
+			case def == "NULL" || def == "" || def == "Session user":
+				sqlQuery = strings.ReplaceAll(sqlQuery, placeholder, "NULL")
+			default:
+				sqlQuery = strings.ReplaceAll(sqlQuery, placeholder, "'"+def+"'")
+			}
+		} else {
+			// Detect SQL keywords — don't quote them
+			upperVal := strings.ToUpper(strings.TrimSpace(val))
+			if upperVal == "CURRENT_DATE" || upperVal == "CURRENT_TIMESTAMP" || upperVal == "NULL" {
+				sqlQuery = strings.ReplaceAll(sqlQuery, placeholder, upperVal)
+			} else {
+				switch strings.ToUpper(p.Type) {
+				case "INTEGER", "INT", "NUMERIC", "BIGINT":
+					sqlQuery = strings.ReplaceAll(sqlQuery, placeholder, val)
+				default:
+					sqlQuery = strings.ReplaceAll(sqlQuery, placeholder, "'"+sanitizeParam(val)+"'")
+				}
+			}
+		}
+	}
+
+	// Handle any remaining :param references
+	re := regexp.MustCompile(`:(\w+)`)
+	sqlQuery = re.ReplaceAllStringFunc(sqlQuery, func(match string) string {
+		paramName := strings.TrimPrefix(match, ":")
+		val := r.FormValue(paramName)
+		if val == "" {
+			return "NULL"
+		}
+		return "'" + sanitizeParam(val) + "'"
+	})
+
+	// Restore PostgreSQL :: casts
+	sqlQuery = strings.ReplaceAll(sqlQuery, castPlaceholder, "::")
+
+	if os.Getenv("DEBUG_SQL") == "true" {
+		log.Printf("Query Execute SQL:\n%s", sqlQuery)
+	}
+
+	rows, err := h.DB.Query(sqlQuery)
+	if err != nil {
+		log.Printf("Query execution error: %v", err)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, `<div class="dg-query-error"><i class="fas fa-exclamation-triangle"></i> <strong>Query Error:</strong> %s</div>`, template.HTMLEscapeString(err.Error()))
+		return
+	}
+	defer rows.Close()
+
+	// Get column info
+	cols, err := rows.Columns()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	colTypes, _ := rows.ColumnTypes()
+
+	// Scan all rows into records
+	records := []map[string]interface{}{}
+	values := make([]interface{}, len(cols))
+	scanArgs := make([]interface{}, len(cols))
+	for i := range values {
+		scanArgs[i] = &values[i]
+	}
+
+	for rows.Next() {
+		if err := rows.Scan(scanArgs...); err != nil {
+			continue
+		}
+		row := make(map[string]interface{})
+		for i, col := range cols {
+			if values[i] == nil {
+				row[col] = nil
+			} else {
+				switch v := values[i].(type) {
+				case time.Time:
+					if v.Hour() == 0 && v.Minute() == 0 && v.Second() == 0 {
+						row[col] = v.Format("2006-01-02")
+					} else {
+						row[col] = v.Format("2006-01-02 15:04")
+					}
+				case []byte:
+					row[col] = string(v)
+				default:
+					row[col] = v
+				}
+			}
+		}
+		if jsonBytes, err := json.Marshal(row); err == nil {
+			row["_json"] = string(jsonBytes)
+		}
+		records = append(records, row)
+	}
+
+	// Build UIColumns from query result columns
+	uiCols := make([]UIColumn, len(cols))
+	for i, col := range cols {
+		displayCol := strings.ReplaceAll(col, "_", " ")
+		// Title case
+		words := strings.Fields(displayCol)
+		for j, w := range words {
+			if len(w) > 0 {
+				words[j] = strings.ToUpper(w[:1]) + w[1:]
+			}
+		}
+		displayCol = strings.Join(words, " ")
+
+		colType := "text"
+		if i < len(colTypes) {
+			dbType := strings.ToUpper(colTypes[i].DatabaseTypeName())
+			if strings.Contains(dbType, "INT") || strings.Contains(dbType, "FLOAT") ||
+				strings.Contains(dbType, "NUMERIC") || strings.Contains(dbType, "DECIMAL") {
+				colType = "numeric"
+			} else if strings.Contains(dbType, "DATE") || strings.Contains(dbType, "TIME") {
+				colType = "date"
+			}
+		}
+
+		cssClass := ""
+		if colType == "numeric" {
+			cssClass = "col-number"
+		}
+
+		uiCols[i] = UIColumn{
+			Field:    col,
+			Label:    displayCol,
+			CSS:      cssClass,
+			Type:     colType,
+			Sortable: false,
+			Visible:  true,
+			Record:   true,
+		}
+	}
+
+	// If handler has pre-defined columns from catalog, use those for labels/css
+	for i, uiCol := range uiCols {
+		for _, hCol := range h.Columns {
+			if hCol.Field == uiCol.Field {
+				uiCols[i].Label = hCol.Label
+				if hCol.CSS != "" {
+					uiCols[i].CSS = hCol.CSS
+				}
+				uiCols[i].Icon = hCol.Icon
+				uiCols[i].LOV = hCol.LOV
+				uiCols[i].Display = hCol.Display
+				break
+			}
+		}
+	}
+
+	res := &TableResult{
+		Records:             records,
+		TotalCount:          len(records),
+		Offset:              0,
+		Limit:               len(records),
+		UIColumns:           uiCols,
+		Config:              h.Config,
+		Lang:                h.Lang,
+		IconStyleLibrary:    h.IconStyleLibrary,
+		IsPhosphor:          h.IconStyleLibrary == "Phosphor",
+		Title:               h.Catalog.Title,
+		ListEndpoint:        h.ListEndpoint,
+		LOVChooserThreshold: h.LOVChooserThreshold,
+		ViewMode:            "query",
+		IsQueryMode:         true,
+	}
+	res.App.Name = h.AppName
+
+	// Render using the standard table partial
+	funcs := TemplateFuncs()
+	tmpl, err := template.New("query_result").Funcs(funcs).ParseFS(UIAssets, "ui/templates/partials/datagrid/*.html")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Template parse error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprintf(w, `<div class="dg-query-row-count"><i class="fas fa-database"></i> %d rows</div>`, len(records))
+	err = tmpl.ExecuteTemplate(w, "datagrid_table", res)
+	if err != nil {
+		log.Printf("Template execution error: %v", err)
+	}
+}
+
+func sanitizeParam(s string) string {
+	return strings.ReplaceAll(s, "'", "''")
+}
 func (h *Handler) ParseParams(r *http.Request) RequestParams {
 	q := r.URL.Query()
 	limit := 10
@@ -1207,6 +1565,10 @@ func TemplateFuncs() template.FuncMap {
 				return fmt.Sprintf("%v", v)
 			}
 		},
+		// Query parameter helpers
+		"inputType": func(p QueryParam) string { return p.InputType() },
+		"constantKey": func(p QueryParam) string { return p.ConstantKey() },
+		"displayLabel": func(p QueryParam) string { return p.DisplayLabel() },
 	}
 }
 

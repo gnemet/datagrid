@@ -1,0 +1,76 @@
+{
+    "version": "1.0",
+    "title": "Issue Status Distribution",
+    "title_hu": "Feladat státusz eloszlás",
+    "type": "query",
+    "icon": "fas fa-chart-pie",
+    "description": "Current issue count by canonical status per project.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "TIMESTAMPTZ",
+            "default": "CURRENT_TIMESTAMP",
+            "input": "date",
+            "description": "Point-in-time for historized lookup"
+        },
+        {
+            "name": "project_key",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "text",
+            "description": "Filter to a specific project (NULL = all)"
+        }
+    ],
+    "sql": "SELECT p.project_key, p.project_name, COALESCE(ms.canonical_status, 'Other') AS canonical_status, ms.is_open, ms.is_closed, COUNT(*) AS issue_count FROM dwh.dim_issue_h i JOIN dwh.dim_project_h p ON i.issue_key LIKE p.project_key || '-%' AND p.valid_period @> :effective_date::timestamptz LEFT JOIN dwh.map_status ms ON i.issuestatus = ms.status_name WHERE i.valid_period @> :effective_date::timestamptz AND (:project_key IS NULL OR p.project_key = :project_key) GROUP BY p.project_key, p.project_name, ms.canonical_status, ms.is_open, ms.is_closed ORDER BY p.project_key, issue_count DESC",
+    "objects": [
+        {
+            "name": "issue_status_distribution",
+            "columns": [
+                {
+                    "name": "project_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "project_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "canonical_status",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "is_open",
+                    "type": "BOOLEAN"
+                },
+                {
+                    "name": "is_closed",
+                    "type": "BOOLEAN"
+                },
+                {
+                    "name": "issue_count",
+                    "type": "INTEGER"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "issue_count",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "issue_count": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "Uses map_status to translate raw Jira status names into canonical categories.",
+        "For current-only queries, use dwh.dim_issue (filters upper_inf automatically)."
+    ]
+}

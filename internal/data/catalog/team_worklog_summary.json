@@ -1,0 +1,91 @@
+{
+    "version": "1.0",
+    "title": "Team Worklog Summary",
+    "title_hu": "Csapat munkaidő összesítő",
+    "type": "query",
+    "icon": "fas fa-clock",
+    "description": "Total hours logged by team members, broken down by user, project, and time period.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "DATE",
+            "default": "CURRENT_DATE",
+            "input": "date",
+            "description": "Reference date for the report window"
+        },
+        {
+            "name": "current_user",
+            "type": "TEXT",
+            "default": "Session user",
+            "input": "constant:current_user",
+            "description": "Manager whose team is being queried"
+        },
+        {
+            "name": "period",
+            "type": "TEXT",
+            "default": "month",
+            "input": "select:week,month,quarter",
+            "description": "Aggregation window"
+        }
+    ],
+    "sql": "WITH team AS (SELECT unnest(dwh.user_get_subordinate_keys(:current_user)) AS user_key), period_range AS (SELECT date_trunc(:period, :effective_date::date)::date AS period_start, (date_trunc(:period, :effective_date::date) + ('1 ' || :period)::interval)::date AS period_end) SELECT u.user_key, u.full_name, p.project_key, p.project_name, c.month_text, SUM(f.hours_worked) AS total_hours, COUNT(DISTINCT f.worklog_key) AS worklog_entries FROM dwh.fact_daily_worklogs_h f JOIN dwh.dim_user_h u ON f.user_sid = u.user_sid AND upper_inf(u.valid_period) JOIN dwh.dim_project_h p ON f.project_sid = p.project_sid AND upper_inf(p.valid_period) JOIN dwh.dim_calendar c ON f.calendar_id = c.id JOIN team t ON u.user_key = t.user_key CROSS JOIN period_range pr WHERE upper_inf(f.valid_period) AND c.date_actual >= pr.period_start AND c.date_actual < pr.period_end GROUP BY u.user_key, u.full_name, p.project_key, p.project_name, c.month_text ORDER BY total_hours DESC",
+    "objects": [
+        {
+            "name": "team_worklog_summary",
+            "columns": [
+                {
+                    "name": "user_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "full_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "project_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "project_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "month_text",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "total_hours",
+                    "type": "NUMERIC"
+                },
+                {
+                    "name": "worklog_entries",
+                    "type": "INTEGER"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "total_hours",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "total_hours": {
+                "css": "col-number"
+            },
+            "worklog_entries": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "dwh.user_get_subordinate_keys() resolves hierarchy recursively from dim_user_h.manager_key.",
+        "For self-only queries, replace the CTE with WHERE u.user_key = :current_user.",
+        "hours_worked is pre-calculated in the fact table as seconds_worked / 3600."
+    ]
+}

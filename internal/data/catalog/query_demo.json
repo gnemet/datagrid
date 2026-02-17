@@ -1,0 +1,65 @@
+{
+    "version": "1.0",
+    "title": "Personnel Query",
+    "type": "query",
+    "icon": "fas fa-search",
+    "parameters": [
+        {
+            "name": "department",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "lov:SELECT DISTINCT department FROM datagrid.personnel WHERE department IS NOT NULL ORDER BY 1",
+            "description": "Filter by department"
+        },
+        {
+            "name": "min_salary",
+            "type": "NUMERIC",
+            "default": "0",
+            "input": "number",
+            "description": "Minimum salary threshold"
+        },
+        {
+            "name": "status",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "select:active,inactive,probation",
+            "description": "Employee status filter"
+        }
+    ],
+    "sql": "SELECT id, name, email, department, salary, status FROM datagrid.personnel WHERE (:department IS NULL OR department = :department) AND salary >= :min_salary AND (:status IS NULL OR status = :status) ORDER BY name",
+    "objects": [
+        {
+            "name": "query_result",
+            "columns": [
+                {"name": "id", "type": "BIGINT", "primary_key": true},
+                {"name": "name", "type": "TEXT", "labels": {"en": "Full Name", "hu": "Teljes név"}},
+                {"name": "email", "type": "TEXT", "labels": {"en": "Email", "hu": "Email"}},
+                {"name": "department", "type": "TEXT", "labels": {"en": "Department", "hu": "Részleg"}},
+                {"name": "salary", "type": "NUMERIC", "labels": {"en": "Salary", "hu": "Fizetés"}},
+                {"name": "status", "type": "TEXT", "labels": {"en": "Status", "hu": "Állapot"}}
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [25, 50, 100],
+            "sort_column": "name",
+            "sort_direction": "asc"
+        },
+        "columns": {
+            "id": {
+                "visible": true,
+                "icon": "fa-fingerprint"
+            },
+            "name": {
+                "visible": true,
+                "labels": {"en": "Full Name", "hu": "Teljes név"}
+            },
+            "salary": {
+                "visible": true,
+                "css": "col-number",
+                "labels": {"en": "Salary", "hu": "Fizetés"}
+            }
+        }
+    }
+}

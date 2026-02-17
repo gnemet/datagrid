@@ -1,0 +1,77 @@
+{
+    "version": "1.0",
+    "title": "ETL Health Check",
+    "title_hu": "ETL állapotjelentés",
+    "type": "query",
+    "icon": "fas fa-heartbeat",
+    "description": "DWH operational health: latest ETL runs with status, duration and error messages.",
+    "parameters": [
+        {
+            "name": "limit",
+            "type": "INTEGER",
+            "default": "20",
+            "input": "number",
+            "description": "Number of recent ETL log entries to show"
+        }
+    ],
+    "sql": "SELECT table_name, start_time, start_time + (duration_ms || ' milliseconds')::interval AS end_time, status, etl_type, rows_processed, CASE WHEN duration_ms < 1000 THEN duration_ms || 'ms' ELSE TO_CHAR((duration_ms || ' milliseconds')::interval, 'MI:SS.MS') END AS duration_formatted, error_message FROM meta.etl_log ORDER BY start_time DESC LIMIT :limit",
+    "objects": [
+        {
+            "name": "etl_health_check",
+            "columns": [
+                {
+                    "name": "table_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "start_time",
+                    "type": "TIMESTAMPTZ"
+                },
+                {
+                    "name": "end_time",
+                    "type": "TIMESTAMPTZ"
+                },
+                {
+                    "name": "status",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "etl_type",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "rows_processed",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "duration_formatted",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "error_message",
+                    "type": "TEXT"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                20,
+                50,
+                100
+            ],
+            "sort_column": "start_time",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "rows_processed": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "Mirrors the etl_log_latest_v view but shows full history.",
+        "To check for failed ETLs only, modify the SQL to add WHERE status = 'error'."
+    ]
+}

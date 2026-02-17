@@ -1,0 +1,106 @@
+{
+    "version": "1.0",
+    "title": "Project Issue Summary",
+    "title_hu": "Projekt feladat összesítés",
+    "type": "query",
+    "icon": "fas fa-exchange-alt",
+    "description": "Issue counts per project with type and status breakdown.",
+    "parameters": [],
+    "sql": "SELECT split_part(i.issue_key, '-', 1) AS project_key, COUNT(*) AS total_issues, COUNT(*) FILTER (WHERE i.resolution IS NULL OR i.resolution = '') AS open_issues, COUNT(*) FILTER (WHERE i.resolution IS NOT NULL AND i.resolution != '') AS resolved_issues, ROUND(100.0 * COUNT(*) FILTER (WHERE i.resolution IS NOT NULL AND i.resolution != '') / NULLIF(COUNT(*), 0), 1) AS pct_resolved, MODE() WITHIN GROUP (ORDER BY COALESCE(mit.category, i.issuetype)) AS dominant_type, COUNT(DISTINCT i.assignee) AS assignees FROM dwh.dim_issue_h i LEFT JOIN dwh.map_issue_type mit ON i.issuetype = mit.issuetype::text WHERE upper_inf(i.valid_period) GROUP BY split_part(i.issue_key, '-', 1) ORDER BY open_issues DESC",
+    "objects": [
+        {
+            "name": "project_issue_summary",
+            "columns": [
+                {
+                    "name": "project_key",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Project",
+                        "hu": "Projekt"
+                    }
+                },
+                {
+                    "name": "total_issues",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Total",
+                        "hu": "Összesen"
+                    }
+                },
+                {
+                    "name": "open_issues",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Open",
+                        "hu": "Nyitott"
+                    }
+                },
+                {
+                    "name": "resolved_issues",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Resolved",
+                        "hu": "Megoldott"
+                    }
+                },
+                {
+                    "name": "pct_resolved",
+                    "type": "NUMERIC",
+                    "labels": {
+                        "en": "% Resolved",
+                        "hu": "% Megoldott"
+                    }
+                },
+                {
+                    "name": "dominant_type",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Main Type",
+                        "hu": "Fő típus"
+                    }
+                },
+                {
+                    "name": "assignees",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Assignees",
+                        "hu": "Felelősök"
+                    }
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "open_issues",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "total_issues": {
+                "css": "col-number"
+            },
+            "open_issues": {
+                "css": "col-number"
+            },
+            "resolved_issues": {
+                "css": "col-number"
+            },
+            "pct_resolved": {
+                "css": "col-number"
+            },
+            "assignees": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "Project key extracted from issue_key prefix (e.g. MAKIIER-123 -> MAKIIER).",
+        "dominant_type shows the most common issue type per project.",
+        "pct_resolved shows what percentage of total issues have a resolution."
+    ]
+}

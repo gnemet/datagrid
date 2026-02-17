@@ -1,0 +1,118 @@
+{
+    "version": "1.0",
+    "title": "Project Time Allocation",
+    "title_hu": "Projekt időfelhasználás",
+    "type": "query",
+    "icon": "fas fa-chart-pie",
+    "description": "Total hours logged per project within a given period, with contributor counts.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "DATE",
+            "default": "2026-01-31",
+            "input": "date",
+            "description": "Reference date for the period window"
+        },
+        {
+            "name": "period",
+            "type": "TEXT",
+            "default": "month",
+            "input": "select:week,month,quarter",
+            "description": "Aggregation window"
+        }
+    ],
+    "sql": "WITH period_range AS (SELECT date_trunc(:period, :effective_date::date)::date AS period_start, (date_trunc(:period, :effective_date::date) + ('1 ' || :period)::interval)::date AS period_end) SELECT p.project_key, p.project_name, COALESCE(p.category, 'N/A') AS category, ROUND(SUM(f.hours_worked)::numeric, 1) AS total_hours, COUNT(DISTINCT f.user_sid) AS contributors, COUNT(DISTINCT f.worklog_key) AS worklog_entries, ROUND((SUM(f.hours_worked) / NULLIF(COUNT(DISTINCT c.date_actual), 0))::numeric, 1) AS avg_hours_per_day FROM dwh.fact_daily_worklogs_h f JOIN dwh.dim_project_h p ON f.project_sid = p.project_sid AND upper_inf(p.valid_period) JOIN dwh.dim_calendar c ON f.calendar_id = c.id CROSS JOIN period_range pr WHERE upper_inf(f.valid_period) AND c.date_actual >= pr.period_start AND c.date_actual < pr.period_end GROUP BY p.project_key, p.project_name, p.category ORDER BY total_hours DESC",
+    "objects": [
+        {
+            "name": "project_time_allocation",
+            "columns": [
+                {
+                    "name": "project_key",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Project",
+                        "hu": "Projekt"
+                    }
+                },
+                {
+                    "name": "project_name",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Project Name",
+                        "hu": "Projekt név"
+                    }
+                },
+                {
+                    "name": "category",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Category",
+                        "hu": "Kategória"
+                    }
+                },
+                {
+                    "name": "total_hours",
+                    "type": "NUMERIC",
+                    "labels": {
+                        "en": "Total Hours",
+                        "hu": "Összes óra"
+                    }
+                },
+                {
+                    "name": "contributors",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Contributors",
+                        "hu": "Résztvevők"
+                    }
+                },
+                {
+                    "name": "worklog_entries",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Entries",
+                        "hu": "Bejegyzések"
+                    }
+                },
+                {
+                    "name": "avg_hours_per_day",
+                    "type": "NUMERIC",
+                    "labels": {
+                        "en": "Avg/Day",
+                        "hu": "Átlag/nap"
+                    }
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "total_hours",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "total_hours": {
+                "css": "col-number"
+            },
+            "contributors": {
+                "css": "col-number"
+            },
+            "worklog_entries": {
+                "css": "col-number"
+            },
+            "avg_hours_per_day": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "Shows how resources are distributed across projects in the selected period.",
+        "contributors counts unique people who logged work.",
+        "Default date 2026-01-31 picks January 2026 which has worklog data."
+    ]
+}

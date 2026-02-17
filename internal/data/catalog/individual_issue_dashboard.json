@@ -1,0 +1,118 @@
+{
+    "version": "1.0",
+    "title": "Individual Issue Dashboard",
+    "title_hu": "Egyéni feladat áttekintés",
+    "type": "query",
+    "icon": "fas fa-user-check",
+    "description": "Per-assignee issue counts with type breakdown: total, open, resolved, and dominant type.",
+    "parameters": [
+        {
+            "name": "project_key",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "lov:SELECT code, name FROM dwh.lov_project()",
+            "description": "Filter by project (NULL = all)"
+        }
+    ],
+    "sql": "SELECT i.assignee AS user_key, COALESCE(u.full_name, i.assignee) AS full_name, COALESCE(u.department, 'N/A') AS department, COUNT(*) AS total_issues, COUNT(*) FILTER (WHERE i.resolution IS NULL OR i.resolution = '') AS open_issues, COUNT(*) FILTER (WHERE i.resolution IS NOT NULL AND i.resolution != '') AS closed_issues, MODE() WITHIN GROUP (ORDER BY COALESCE(mit.category, i.issuetype)) AS dominant_type, COUNT(DISTINCT split_part(i.issue_key, '-', 1)) AS projects FROM dwh.dim_issue_h i LEFT JOIN dwh.dim_user_h u ON i.assignee = u.user_key AND upper_inf(u.valid_period) LEFT JOIN dwh.map_issue_type mit ON i.issuetype = mit.issuetype::text WHERE upper_inf(i.valid_period) AND i.assignee IS NOT NULL AND i.assignee != '' AND (:project_key IS NULL OR split_part(i.issue_key, '-', 1) = :project_key) GROUP BY i.assignee, u.full_name, u.department ORDER BY open_issues DESC",
+    "objects": [
+        {
+            "name": "individual_issue_dashboard",
+            "columns": [
+                {
+                    "name": "user_key",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "User Key",
+                        "hu": "Felhasználó"
+                    }
+                },
+                {
+                    "name": "full_name",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Name",
+                        "hu": "Név"
+                    }
+                },
+                {
+                    "name": "department",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Department",
+                        "hu": "Osztály"
+                    }
+                },
+                {
+                    "name": "total_issues",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Total",
+                        "hu": "Összesen"
+                    }
+                },
+                {
+                    "name": "open_issues",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Open",
+                        "hu": "Nyitott"
+                    }
+                },
+                {
+                    "name": "closed_issues",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Closed",
+                        "hu": "Lezárt"
+                    }
+                },
+                {
+                    "name": "dominant_type",
+                    "type": "TEXT",
+                    "labels": {
+                        "en": "Main Type",
+                        "hu": "Fő típus"
+                    }
+                },
+                {
+                    "name": "projects",
+                    "type": "INTEGER",
+                    "labels": {
+                        "en": "Projects",
+                        "hu": "Projektek"
+                    }
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "open_issues",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "total_issues": {
+                "css": "col-number"
+            },
+            "open_issues": {
+                "css": "col-number"
+            },
+            "closed_issues": {
+                "css": "col-number"
+            },
+            "projects": {
+                "css": "col-number"
+            }
+        }
+    },
+    "notes": [
+        "dominant_type shows the most common issue type per person (via MODE()).",
+        "Issue types resolved via dwh.map_issue_type."
+    ]
+}
