@@ -1,0 +1,97 @@
+{
+    "version": "1.0",
+    "title": "Org Tree Select Demo",
+    "title_hu": "Szervezeti fa választó bemutató",
+    "type": "query",
+    "icon": "fas fa-sitemap",
+    "description": "Demonstrates the lov-tree parameter input type with a generated 6-level organizational hierarchy (~600 nodes). The tree is built from a VALUES CTE to work without real data.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "TIMESTAMPTZ",
+            "default": "CURRENT_DATE",
+            "input": "date",
+            "label": "Effective Date",
+            "description": "Point-in-time reference"
+        },
+        {
+            "name": "root_manager",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "lov-tree",
+            "lov_query": "WITH seed(id, name, parent_id, dept) AS ( VALUES ('CEO', 'John Smith (CEO)', NULL::text, 'Executive'), ('CTO', 'Anna Tech (CTO)', 'CEO', 'Technology'), ('CFO', 'Mark Finance (CFO)', 'CEO', 'Finance'), ('COO', 'Sarah Ops (COO)', 'CEO', 'Operations'), ('CHRO', 'Lisa HR (CHRO)', 'CEO', 'Human Resources'), ('CMO', 'David Marketing (CMO)', 'CEO', 'Marketing'), ('VP_ENG', 'Tom Engineering (VP)', 'CTO', 'Engineering'), ('VP_DATA', 'Eva Data (VP)', 'CTO', 'Data & Analytics'), ('VP_SEC', 'Bob Security (VP)', 'CTO', 'Security'), ('VP_INFRA', 'Carol Infra (VP)', 'CTO', 'Infrastructure'), ('VP_FIN', 'Paul Accounting (VP)', 'CFO', 'Accounting'), ('VP_CTRL', 'Nina Control (VP)', 'CFO', 'Controlling'), ('VP_TREAS', 'Oscar Treasury (VP)', 'CFO', 'Treasury'), ('VP_OPS', 'Hank Logistics (VP)', 'COO', 'Logistics'), ('VP_SUPPLY', 'Grace Supply (VP)', 'COO', 'Supply Chain'), ('VP_QUAL', 'Ivan Quality (VP)', 'COO', 'Quality'), ('VP_REC', 'Kate Recruit (VP)', 'CHRO', 'Recruiting'), ('VP_TRAIN', 'Larry Training (VP)', 'CHRO', 'Training'), ('VP_COMP', 'Monica Comp (VP)', 'CHRO', 'Compensation'), ('VP_BRAND', 'Nate Brand (VP)', 'CMO', 'Branding'), ('VP_DIGITAL', 'Olivia Digital (VP)', 'CMO', 'Digital Marketing'), ('VP_PR', 'Pete PR (VP)', 'CMO', 'Public Relations') ), vps AS ( SELECT id, dept FROM seed WHERE parent_id IS NOT NULL AND id NOT IN ('CTO','CFO','COO','CHRO','CMO') ), gen_l3 AS ( SELECT v.id || '_M' || g.n AS id, 'Manager ' || v.dept || ' ' || g.n AS name, v.id AS parent_id, v.dept, 3 AS depth FROM vps v, generate_series(1, 3) g(n) ), gen_l4 AS ( SELECT l3.id || '_L' || g.n AS id, 'Lead ' || l3.dept || ' ' || g.n AS name, l3.id AS parent_id, l3.dept, 4 AS depth FROM gen_l3 l3, generate_series(1, 2) g(n) ), gen_l5 AS ( SELECT l4.id || '_S' || g.n AS id, 'Senior ' || l4.dept || ' ' || g.n AS name, l4.id AS parent_id, l4.dept, 5 AS depth FROM gen_l4 l4, generate_series(1, 2) g(n) ), gen_l6 AS ( SELECT l5.id || '_X' || g.n AS id, 'Specialist ' || l5.dept || ' ' || g.n AS name, l5.id AS parent_id, l5.dept, 6 AS depth FROM gen_l5 l5, generate_series(1, 2) g(n) WHERE random() > 0.3 ), all_nodes AS ( SELECT id, name, 0 AS depth FROM seed WHERE parent_id IS NULL UNION ALL SELECT id, name, 1 FROM seed WHERE id IN ('CTO','CFO','COO','CHRO','CMO') UNION ALL SELECT id, name, 2 FROM seed WHERE parent_id IS NOT NULL AND id NOT IN ('CEO','CTO','CFO','COO','CHRO','CMO') UNION ALL SELECT id, name, depth FROM gen_l3 UNION ALL SELECT id, name, depth FROM gen_l4 UNION ALL SELECT id, name, depth FROM gen_l5 UNION ALL SELECT id, name, depth FROM gen_l6 ) SELECT id AS value, name AS label, depth FROM all_nodes ORDER BY depth, name",
+            "label": "Select Manager",
+            "description": "Choose a manager from the organizational tree (6 levels, ~600 nodes)"
+        },
+        {
+            "name": "current_user",
+            "type": "TEXT",
+            "default": "Session user",
+            "input": "constant",
+            "constant": "current_user",
+            "description": "Logged-in user"
+        }
+    ],
+    "sql": "WITH RECURSIVE org_tree AS ( SELECT user_key, full_name, department, post, manager_key, is_active, 0 AS depth FROM dwh.dim_user_h WHERE (:root_manager IS NULL AND manager_key IS NULL) OR user_key = :root_manager AND valid_period @> :effective_date::timestamptz UNION ALL SELECT u.user_key, u.full_name, u.department, u.post, u.manager_key, u.is_active, t.depth + 1 FROM dwh.dim_user_h u INNER JOIN org_tree t ON u.manager_key = t.user_key WHERE u.valid_period @> :effective_date::timestamptz ) SELECT depth, REPEAT('  ', depth) || full_name AS indented_name, user_key, full_name, department, post, is_active FROM org_tree ORDER BY depth, full_name",
+    "objects": [
+        {
+            "name": "org_tree_result",
+            "columns": [
+                {
+                    "name": "depth",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "indented_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "user_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "full_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "department",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "post",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "is_active",
+                    "type": "BOOLEAN"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                50,
+                100,
+                200
+            ],
+            "sort_column": "depth",
+            "sort_direction": "asc"
+        },
+        "columns": {
+            "depth": {
+                "css": "col-number"
+            },
+            "is_active": {
+                "css": "col-boolean"
+            }
+        }
+    },
+    "notes": [
+        "lov-tree lov_query returns 3 columns: value, label, depth.",
+        "Depth controls visual indentation (── prefix) in the <select>.",
+        "This demo generates ~627 nodes across 6 levels using generate_series:",
+        "  L0: CEO (1), L1: C-suite (5), L2: VPs (16), L3: Managers (48), L4: Leads (96), L5: Seniors (192), L6: Specialists (~269).",
+        "For real data, use: WITH RECURSIVE org AS (...) SELECT user_key, full_name, depth FROM org"
+    ]
+}

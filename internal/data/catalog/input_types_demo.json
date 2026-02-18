@@ -1,0 +1,108 @@
+{
+    "version": "1.0",
+    "title": "Input Types Demo",
+    "title_hu": "Beviteli típusok bemutató",
+    "type": "query",
+    "icon": "fas fa-flask",
+    "description": "Demonstrates all parameter input types available in the datagrid catalog system.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "TIMESTAMPTZ",
+            "default": "CURRENT_DATE",
+            "input": "date",
+            "label": "Effective Date",
+            "description": "Point-in-time reference date"
+        },
+        {
+            "name": "limit",
+            "type": "INTEGER",
+            "default": "100",
+            "input": "number",
+            "label": "Row Limit",
+            "description": "Maximum number of rows"
+        },
+        {
+            "name": "search_term",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "text",
+            "label": "Search",
+            "description": "Free-text search filter"
+        },
+        {
+            "name": "status",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "select",
+            "select_options": "active,inactive,probation,terminated",
+            "label": "Status",
+            "description": "Employee status filter"
+        },
+        {
+            "name": "department",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "lov",
+            "lov_query": "SELECT DISTINCT department FROM datagrid.personnel WHERE department IS NOT NULL ORDER BY 1",
+            "label": "Department",
+            "description": "Filter by specific department"
+        },
+        {
+            "name": "current_user",
+            "type": "TEXT",
+            "default": "Session user",
+            "input": "constant",
+            "constant": "current_user",
+            "description": "Logged-in user (server-resolved)"
+        }
+    ],
+    "sql": "SELECT id, name, email, department, salary, status FROM datagrid.personnel WHERE (:department IS NULL OR department = :department) AND (:status IS NULL OR status = :status) AND (:search_term IS NULL OR name ILIKE '%' || :search_term || '%') AND salary >= 0 ORDER BY name LIMIT :limit",
+    "objects": [
+        {
+            "name": "input_demo_result",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "BIGINT",
+                    "primary_key": true
+                },
+                {
+                    "name": "name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "email",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "department",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "salary",
+                    "type": "NUMERIC"
+                },
+                {
+                    "name": "status",
+                    "type": "TEXT"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "name",
+            "sort_direction": "asc"
+        }
+    },
+    "notes": [
+        "This catalog demonstrates: text, number, date, select, lov, and constant input types.",
+        "Each parameter uses the clean field-based API (input keyword + dedicated fields)."
+    ]
+}

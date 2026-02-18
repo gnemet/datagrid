@@ -1,0 +1,85 @@
+{
+    "version": "1.0",
+    "title": "Multi-Select Demo",
+    "title_hu": "Többválasztós bemutató",
+    "type": "query",
+    "icon": "fas fa-check-double",
+    "description": "Demonstrates the multi-select (array) parameter input type for filtering by multiple values.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "TIMESTAMPTZ",
+            "default": "CURRENT_DATE",
+            "input": "date",
+            "label": "Effective Date",
+            "description": "Point-in-time reference date"
+        },
+        {
+            "name": "departments",
+            "type": "TEXT[]",
+            "default": "NULL",
+            "input": "lov",
+            "lov_query": "SELECT DISTINCT department FROM datagrid.personnel WHERE department IS NOT NULL ORDER BY 1",
+            "label": "Departments",
+            "description": "Select one or more departments (multi-select)"
+        },
+        {
+            "name": "statuses",
+            "type": "TEXT[]",
+            "default": "NULL",
+            "input": "select",
+            "select_options": "active,inactive,probation,terminated",
+            "label": "Statuses",
+            "description": "Select one or more statuses"
+        }
+    ],
+    "sql": "SELECT id, name, email, department, salary, status FROM datagrid.personnel WHERE (:departments IS NULL OR department = ANY(:departments)) AND (:statuses IS NULL OR status = ANY(:statuses)) ORDER BY department, name",
+    "objects": [
+        {
+            "name": "multiselect_result",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "BIGINT",
+                    "primary_key": true
+                },
+                {
+                    "name": "name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "email",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "department",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "salary",
+                    "type": "NUMERIC"
+                },
+                {
+                    "name": "status",
+                    "type": "TEXT"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "department",
+            "sort_direction": "asc"
+        }
+    },
+    "notes": [
+        "TEXT[] type auto-detects array parameters and renders <select multiple>.",
+        "NULL substitution when nothing selected; ARRAY['a','b'] when items chosen.",
+        "SQL uses = ANY(:param) pattern for array filtering."
+    ]
+}

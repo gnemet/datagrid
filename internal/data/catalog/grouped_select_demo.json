@@ -1,0 +1,75 @@
+{
+    "version": "1.0",
+    "title": "Grouped Select Demo",
+    "title_hu": "Csoportosított választó bemutató",
+    "type": "query",
+    "icon": "fas fa-layer-group",
+    "description": "Demonstrates the lov-grouped parameter input type — users grouped by department in an <optgroup> dropdown.",
+    "parameters": [
+        {
+            "name": "effective_date",
+            "type": "TIMESTAMPTZ",
+            "default": "CURRENT_DATE",
+            "input": "date",
+            "label": "Effective Date",
+            "description": "Point-in-time reference"
+        },
+        {
+            "name": "user_key",
+            "type": "TEXT",
+            "default": "NULL",
+            "input": "lov-grouped",
+            "lov_query": "SELECT COALESCE(department, 'Unknown') AS grp, user_key, COALESCE(full_name, user_key) AS label FROM dwh.dim_user_h WHERE valid_period @> CURRENT_TIMESTAMP AND is_active ORDER BY 1, 3",
+            "label": "Employee",
+            "description": "Select user grouped by department"
+        }
+    ],
+    "sql": "SELECT u.user_key, u.full_name, u.department, u.post, u.is_active, l.email FROM dwh.dim_user_h u LEFT JOIN dwh.ldap l ON u.user_key = l.user_key WHERE u.valid_period @> :effective_date::timestamptz AND (:user_key IS NULL OR u.user_key = :user_key) ORDER BY u.department, u.full_name",
+    "objects": [
+        {
+            "name": "grouped_result",
+            "columns": [
+                {
+                    "name": "user_key",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "full_name",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "department",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "post",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "is_active",
+                    "type": "BOOLEAN"
+                },
+                {
+                    "name": "email",
+                    "type": "TEXT"
+                }
+            ]
+        }
+    ],
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25,
+                50,
+                100
+            ],
+            "sort_column": "full_name",
+            "sort_direction": "asc"
+        }
+    },
+    "notes": [
+        "lov-grouped lov_query returns 3 columns: group_label, value, label.",
+        "Groups are rendered as <optgroup> sections in the dropdown.",
+        "Ordering in the SQL controls both group order and item order within groups."
+    ]
+}

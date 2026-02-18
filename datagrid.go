@@ -45,6 +45,8 @@ type LOVItem struct {
 	Label    string            `json:"label,omitempty"`
 	RowStyle string            `json:"rowStyle,omitempty"`
 	RowClass string            `json:"rowClass,omitempty"`
+	Group    string            `json:"-"` // For lov-grouped: optgroup label
+	Depth    int               `json:"-"` // For lov-tree: indentation level
 }
 
 // Catalog structures for MIGR/JiraMntr compatibility
@@ -153,28 +155,41 @@ type FilterDef struct {
 // QueryParam describes a query parameter from the catalog JSON.
 type QueryParam struct {
 	Name            string    `json:"name"`
-	Type            string    `json:"type"`              // DATE, TEXT, INTEGER, NUMERIC
-	Default         string    `json:"default"`           // CURRENT_DATE, NULL, or literal
-	Input           string    `json:"input"`             // date, number, text, select:a,b,c, lov:SELECT..., constant:current_user
+	Type            string    `json:"type"`                       // DATE, TEXT, INTEGER, NUMERIC, TEXT[]
+	Default         string    `json:"default"`                    // CURRENT_DATE, NULL, or literal
+	Input           string    `json:"input"`                      // date, number, text, select, lov, lov-tree, lov-grouped, constant
 	Description     string    `json:"description"`
-	Label           string    `json:"label,omitempty"`   // Display label (auto-generated from name if empty)
-	Options         []LOVItem `json:"options,omitempty"` // Resolved at load time for select/lov
-	ResolvedDefault string    `json:"-"`                // Resolved default for HTML inputs
+	Label           string    `json:"label,omitempty"`            // Display label (auto-generated from name if empty)
+	LOVQuery        string    `json:"lov_query,omitempty"`        // SQL query for lov/lov-tree/lov-grouped options
+	LOVName         string    `json:"lov_name,omitempty"`         // Named LOV function (e.g. "lov_department" → SELECT code, name FROM dwh.lov_department())
+	SelectOptions   string    `json:"select_options,omitempty"`   // Comma-separated options for select type (alternative to select:a,b,c)
+	Constant        string    `json:"constant,omitempty"`         // Constant key (e.g. "current_user") — alternative to constant:key
+	Options         []LOVItem `json:"options,omitempty"`          // Resolved at load time for select/lov
+	ResolvedDefault string    `json:"-"`                         // Resolved default for HTML inputs
+	IsArray         bool      `json:"isArray,omitempty"`          // True for array types (TEXT[], INTEGER[]) → renders multi-select
 }
 
 // InputType returns the HTML input type for the parameter.
 func (p QueryParam) InputType() string {
+	in := strings.ToLower(strings.TrimSpace(p.Input))
 	switch {
-	case p.Input == "date" || p.Input == "datetime":
+	case in == "date" || in == "datetime":
 		return "date"
-	case p.Input == "number":
+	case in == "number":
 		return "number"
-	case strings.HasPrefix(p.Input, "constant:"):
-		return "constant"
-	case strings.HasPrefix(p.Input, "lov:"):
+	case in == "lov-tree" || strings.HasPrefix(in, "lov-tree:"):
+		return "lov-tree"
+	case in == "lov-grouped" || strings.HasPrefix(in, "lov-grouped:"):
+		return "lov-grouped"
+	case in == "lov" || strings.HasPrefix(in, "lov:"):
+		if p.IsArray {
+			return "lov-multi"
+		}
 		return "lov"
-	case strings.HasPrefix(p.Input, "select:"):
+	case in == "select" || strings.HasPrefix(in, "select:"):
 		return "select"
+	case in == "constant" || strings.HasPrefix(in, "constant:"):
+		return "constant"
 	default:
 		return "text"
 	}
@@ -182,8 +197,44 @@ func (p QueryParam) InputType() string {
 
 // ConstantKey returns the constant type (e.g. "current_user") for constant params.
 func (p QueryParam) ConstantKey() string {
+	if p.Constant != "" {
+		return p.Constant
+	}
 	if strings.HasPrefix(p.Input, "constant:") {
 		return strings.TrimPrefix(p.Input, "constant:")
+	}
+	return ""
+}
+
+// resolvedLOVQuery returns the SQL for LOV resolution, checking lov_query, lov_name, and inline prefix.
+func (p QueryParam) resolvedLOVQuery() string {
+	// 1. Explicit lov_query field
+	if p.LOVQuery != "" {
+		return p.LOVQuery
+	}
+	// 2. Named LOV function → build SELECT
+	if p.LOVName != "" {
+		if !strings.Contains(p.LOVName, "(") {
+			return "SELECT code, name FROM dwh." + p.LOVName + "()"
+		}
+		return "SELECT code, name FROM dwh." + p.LOVName
+	}
+	// 3. Inline prefix (backward compat): lov:SQL, lov-tree:SQL, lov-grouped:SQL
+	for _, prefix := range []string{"lov-tree:", "lov-grouped:", "lov:"} {
+		if strings.HasPrefix(p.Input, prefix) {
+			return strings.TrimPrefix(p.Input, prefix)
+		}
+	}
+	return ""
+}
+
+// resolvedSelectOptions returns options for select input, checking select_options field and inline prefix.
+func (p QueryParam) resolvedSelectOptions() string {
+	if p.SelectOptions != "" {
+		return p.SelectOptions
+	}
+	if strings.HasPrefix(p.Input, "select:") {
+		return strings.TrimPrefix(p.Input, "select:")
 	}
 	return ""
 }
@@ -521,9 +572,7 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 			}
 		}
 
-		if displayPattern == "" {
-			displayPattern = label
-		}
+
 
 		uiCols = append(uiCols, UIColumn{
 			Field:    col.Name,
@@ -565,9 +614,15 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 		copy(params, cat.Parameters)
 
 		for i := range params {
+			// Detect array types (e.g. TEXT[], INTEGER[])
+			if strings.HasSuffix(strings.ToUpper(params[i].Type), "[]") {
+				params[i].IsArray = true
+				params[i].Type = strings.TrimSuffix(params[i].Type, "[]")
+			}
+
 			// Resolve select options
-			if strings.HasPrefix(params[i].Input, "select:") {
-				opts := strings.TrimPrefix(params[i].Input, "select:")
+			if itype := params[i].InputType(); itype == "select" {
+				opts := params[i].resolvedSelectOptions()
 				for _, o := range strings.Split(opts, ",") {
 					o = strings.TrimSpace(o)
 					if o != "" {
@@ -576,22 +631,42 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 				}
 			}
 
-			// Resolve LOV options from DB
-			if strings.HasPrefix(params[i].Input, "lov:") {
-				lovSQL := strings.TrimPrefix(params[i].Input, "lov:")
-				if lovSQL != "" {
-					rows, err := db.Query(lovSQL)
-					if err == nil {
-						defer rows.Close()
-						for rows.Next() {
+			// Resolve LOV/tree/grouped options from DB
+			itype := params[i].InputType()
+			lovSQL := params[i].resolvedLOVQuery()
+			if lovSQL != "" && (itype == "lov" || itype == "lov-multi" || itype == "lov-tree" || itype == "lov-grouped") {
+				rows, err := db.Query(lovSQL)
+				if err == nil {
+					defer rows.Close()
+					cols, _ := rows.Columns()
+					nCols := len(cols)
+					for rows.Next() {
+						switch {
+						case itype == "lov-tree" && nCols >= 3:
+							var val, label string
+							var depth int
+							if err := rows.Scan(&val, &label, &depth); err == nil {
+								params[i].Options = append(params[i].Options, LOVItem{Value: val, Label: label, Depth: depth})
+							}
+						case itype == "lov-grouped" && nCols >= 3:
+							var group, val, label string
+							if err := rows.Scan(&group, &val, &label); err == nil {
+								params[i].Options = append(params[i].Options, LOVItem{Value: val, Label: label, Group: group})
+							}
+						case nCols >= 2:
+							var val, label string
+							if err := rows.Scan(&val, &label); err == nil {
+								params[i].Options = append(params[i].Options, LOVItem{Value: val, Label: label})
+							}
+						default:
 							var val string
 							if err := rows.Scan(&val); err == nil {
 								params[i].Options = append(params[i].Options, LOVItem{Value: val, Label: val})
 							}
 						}
-					} else {
-						log.Printf("LOV query error for param %s: %v", params[i].Name, err)
 					}
+				} else {
+					log.Printf("LOV query error for param %s: %v", params[i].Name, err)
 				}
 			}
 
@@ -823,9 +898,30 @@ func (h *Handler) ExecuteQuery(w http.ResponseWriter, r *http.Request) {
 	const castPlaceholder = "\x00CAST\x00"
 	sqlQuery = strings.ReplaceAll(sqlQuery, "::", castPlaceholder)
 
+	r.ParseForm()
+
 	for _, p := range h.QueryParams {
 		placeholder := ":" + p.Name
 		var val string
+
+		// Array (multi-select) parameters
+		if p.IsArray {
+			vals := r.Form[p.Name]
+			var cleaned []string
+			for _, v := range vals {
+				v = strings.TrimSpace(v)
+				if v != "" {
+					cleaned = append(cleaned, "'"+sanitizeParam(v)+"'")
+				}
+			}
+			if len(cleaned) == 0 {
+				sqlQuery = strings.ReplaceAll(sqlQuery, placeholder, "NULL")
+			} else {
+				arrayLiteral := "ARRAY[" + strings.Join(cleaned, ",") + "]"
+				sqlQuery = strings.ReplaceAll(sqlQuery, placeholder, arrayLiteral)
+			}
+			continue
+		}
 
 		// Constants are resolved server-side
 		if strings.HasPrefix(p.Input, "constant:") {
@@ -1569,6 +1665,39 @@ func TemplateFuncs() template.FuncMap {
 		"inputType": func(p QueryParam) string { return p.InputType() },
 		"constantKey": func(p QueryParam) string { return p.ConstantKey() },
 		"displayLabel": func(p QueryParam) string { return p.DisplayLabel() },
+
+		// lov-tree: indent label by depth
+		"indentLabel": func(item LOVItem) string {
+			prefix := ""
+			for j := 0; j < item.Depth; j++ {
+				prefix += "── "
+			}
+			return prefix + item.Label
+		},
+
+		// lov-grouped: ordered unique group labels
+		"lovGroups": func(items []LOVItem) []string {
+			seen := map[string]bool{}
+			var groups []string
+			for _, item := range items {
+				if !seen[item.Group] {
+					seen[item.Group] = true
+					groups = append(groups, item.Group)
+				}
+			}
+			return groups
+		},
+
+		// lov-grouped: items within a specific group
+		"lovByGroup": func(items []LOVItem, group string) []LOVItem {
+			var result []LOVItem
+			for _, item := range items {
+				if item.Group == group {
+					result = append(result, item)
+				}
+			}
+			return result
+		},
 	}
 }
 

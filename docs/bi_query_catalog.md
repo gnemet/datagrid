@@ -53,14 +53,102 @@ Each parameter is an object with these fields:
 
 ### Input Types
 
-| Input | Renders | Example |
-|:------|:--------|:--------|
-| `text` | Text input | Free-text filter |
-| `number` | Number input | Row limit, threshold |
-| `date` | Date picker | Reference date |
-| `select:a,b,c` | Static dropdown | `select:week,month,quarter` |
-| `lov:SELECT ...` | DB-populated dropdown | `lov:SELECT code, name FROM dwh.lov_project()` |
-| `constant:current_user` | Hidden, server-resolved | Auto-filled with login user |
+The `input` field is a simple type keyword. SQL and options go in dedicated fields:
+
+| `input` | Renders | Used with |
+|:--------|:--------|:----------|
+| `text` | Text input | — |
+| `number` | Number input | — |
+| `date` | Date picker | — |
+| `select` | Static dropdown | `select_options` |
+| `lov` | DB-populated dropdown | `lov_query` or `lov_name` |
+| `lov` + `TEXT[]` type | Multi-select dropdown | `lov_query` or `lov_name` |
+| `lov-tree` | Indented hierarchy select | `lov_query` (3 cols: value, label, depth) |
+| `lov-grouped` | Grouped `<optgroup>` select | `lov_query` (3 cols: group, value, label) |
+| `constant` | Hidden, server-resolved | `constant` |
+
+> [!TIP]
+> Legacy inline prefix syntax (e.g. `"input": "lov:SELECT ..."`, `"input": "select:a,b,c"`) is still supported for backward compatibility.
+
+### Parameter Fields Reference
+
+| Field | Type | Description |
+|:------|:-----|:------------|
+| `name` | string | Parameter name (used as `:name` in SQL) |
+| `type` | string | SQL type: `TEXT`, `INTEGER`, `DATE`, `TIMESTAMPTZ`, `TEXT[]` |
+| `default` | string | `NULL`, `CURRENT_DATE`, `CURRENT_TIMESTAMP`, or literal |
+| `input` | string | Input type keyword (see table above) |
+| `lov_query` | string | SQL query for LOV options |
+| `lov_name` | string | Named LOV function → auto-builds `SELECT code, name FROM dwh.<lov_name>()` |
+| `select_options` | string | Comma-separated values for select type |
+| `constant` | string | Constant key, e.g. `current_user` |
+| `description` | string | Hint text shown below the input |
+| `label` | string | Display label (auto-generated from name if empty) |
+
+### Multi-Select (Array) Parameters
+
+Set `type` to an array type (e.g. `TEXT[]`) to render a multi-select `<select multiple>`:
+
+```json
+{
+    "name": "department",
+    "type": "TEXT[]",
+    "default": "NULL",
+    "input": "lov",
+    "lov_query": "SELECT DISTINCT department FROM dwh.dim_user_h WHERE department IS NOT NULL ORDER BY 1",
+    "description": "Filter to specific departments"
+}
+```
+
+- When no items selected → substituted as `NULL`
+- When items selected → substituted as `ARRAY['val1','val2']`
+- SQL pattern: `WHERE (:department IS NULL OR u.department = ANY(:department))`
+
+### Hierarchical Tree Select (`lov-tree`)
+
+`lov_query` must return **3 columns**: `value`, `label`, `depth` (integer). Depth controls visual `──` indentation.
+
+```json
+{
+    "name": "manager",
+    "type": "TEXT",
+    "default": "NULL",
+    "input": "lov-tree",
+    "lov_query": "WITH RECURSIVE org AS (SELECT user_key, full_name, 0 AS depth FROM dwh.dim_user_h WHERE manager_key IS NULL AND is_active UNION ALL SELECT u.user_key, u.full_name, o.depth+1 FROM dwh.dim_user_h u JOIN org o ON u.manager_key = o.user_key WHERE u.is_active) SELECT user_key, full_name, depth FROM org ORDER BY depth, full_name",
+    "description": "Select from org hierarchy"
+}
+```
+
+### Grouped Select (`lov-grouped`)
+
+`lov_query` must return **3 columns**: `group_label`, `value`, `label`. Groups render as `<optgroup>`.
+
+```json
+{
+    "name": "user",
+    "type": "TEXT",
+    "default": "NULL",
+    "input": "lov-grouped",
+    "lov_query": "SELECT department, user_key, full_name FROM dwh.dim_user_h WHERE is_active AND valid_period @> CURRENT_TIMESTAMP ORDER BY 1, 3",
+    "description": "Select user by department"
+}
+```
+
+### Named LOV Functions (`lov_name`)
+
+Instead of writing SQL in `lov_query`, reference a DWH function by name:
+
+```json
+{
+    "name": "project",
+    "type": "TEXT",
+    "input": "lov",
+    "lov_name": "lov_project",
+    "description": "Select project"
+}
+```
+
+This auto-generates: `SELECT code, name FROM dwh.lov_project()`
 
 ### LOV Queries
 

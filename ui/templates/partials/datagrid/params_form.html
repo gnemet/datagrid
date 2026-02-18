@@ -3,15 +3,15 @@
     <div class="dg-params-header">
         <i class="fas fa-sliders-h"></i>
         <span>Query Parameters</span>
-        <button type="button" class="dg-btn-icon dg-params-toggle" onclick="this.closest('.dg-params-panel').classList.toggle('collapsed')" title="Toggle Parameters">
+        <button type="button" class="dg-btn-icon dg-params-toggle"
+            onclick="this.closest('.dg-params-panel').classList.toggle('collapsed')" title="Toggle Parameters">
             <i class="fas fa-chevron-up"></i>
         </button>
     </div>
 
     <form id="dg-params-form" class="dg-params-body"
-          hx-post="{{.ExecuteEndpoint}}{{if .CurrentCatalog}}?config={{.CurrentCatalog}}{{end}}"
-          hx-target="#dg-query-results"
-          hx-indicator="#dg-query-spinner">
+        hx-post="{{.ExecuteEndpoint}}{{if .CurrentCatalog}}?config={{.CurrentCatalog}}{{end}}"
+        hx-target="#dg-query-results" hx-indicator="#dg-query-spinner">
 
         <div class="dg-params-grid">
             {{range .QueryParams}}
@@ -24,9 +24,11 @@
                 <label for="param-{{.Name}}">{{displayLabel .}}</label>
 
                 {{if eq $itype "date"}}
-                <input type="date" id="param-{{.Name}}" name="{{.Name}}" value="{{.ResolvedDefault}}" class="dg-param-input">
+                <input type="date" id="param-{{.Name}}" name="{{.Name}}" value="{{.ResolvedDefault}}"
+                    class="dg-param-input">
                 {{else if eq $itype "number"}}
-                <input type="number" id="param-{{.Name}}" name="{{.Name}}" value="{{.ResolvedDefault}}" class="dg-param-input">
+                <input type="number" id="param-{{.Name}}" name="{{.Name}}" value="{{.ResolvedDefault}}"
+                    class="dg-param-input">
                 {{else if eq $itype "select"}}
                 <select id="param-{{.Name}}" name="{{.Name}}" class="dg-param-input">
                     <option value="">— All —</option>
@@ -41,8 +43,34 @@
                     <option value="{{.Value}}">{{.Label}}</option>
                     {{end}}
                 </select>
+                {{else if eq $itype "lov-multi"}}
+                <select id="param-{{.Name}}" name="{{.Name}}" class="dg-param-input" multiple>
+                    {{range .Options}}
+                    <option value="{{.Value}}">{{.Label}}</option>
+                    {{end}}
+                </select>
+                {{else if eq $itype "lov-tree"}}
+                <select id="param-{{.Name}}" name="{{.Name}}" class="dg-param-input">
+                    <option value="">— All —</option>
+                    {{range .Options}}
+                    <option value="{{.Value}}">{{indentLabel .}}</option>
+                    {{end}}
+                </select>
+                {{else if eq $itype "lov-grouped"}}
+                {{$opts := .Options}}
+                <select id="param-{{.Name}}" name="{{.Name}}" class="dg-param-input">
+                    <option value="">— All —</option>
+                    {{range lovGroups $opts}}
+                    <optgroup label="{{.}}">
+                        {{range lovByGroup $opts .}}
+                        <option value="{{.Value}}">{{.Label}}</option>
+                        {{end}}
+                    </optgroup>
+                    {{end}}
+                </select>
                 {{else}}
-                <input type="text" id="param-{{.Name}}" name="{{.Name}}" value="{{.ResolvedDefault}}" placeholder="{{.Description}}" class="dg-param-input">
+                <input type="text" id="param-{{.Name}}" name="{{.Name}}" value="{{.ResolvedDefault}}"
+                    placeholder="{{.Description}}" class="dg-param-input">
                 {{end}}
 
                 {{if .Description}}
@@ -57,7 +85,8 @@
             <button type="submit" class="dg-btn dg-btn-primary">
                 <i class="fas fa-play"></i> Run Query
             </button>
-            <button type="reset" class="dg-btn dg-btn-secondary" onclick="setTimeout(function(){htmx.trigger('#dg-params-form','submit')}, 50)">
+            <button type="reset" class="dg-btn dg-btn-secondary"
+                onclick="setTimeout(function(){htmx.trigger('#dg-params-form','submit')}, 50)">
                 <i class="fas fa-undo"></i> Reset
             </button>
             <span id="dg-query-spinner" class="htmx-indicator">
