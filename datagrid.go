@@ -358,6 +358,56 @@ func NewHandlerFromCatalog(db *sql.DB, catalogPath string, lang string) (*Handle
 	return NewHandlerFromData(db, data, lang)
 }
 
+// NewHandlerFromDataWithUser initializes a Handler with user context for RLS-aware LOV resolution.
+func NewHandlerFromDataWithUser(db *sql.DB, data []byte, lang string, currentUser string) (*Handler, error) {
+	h, err := NewHandlerFromData(db, data, lang)
+	if err != nil {
+		return nil, err
+	}
+	h.CurrentUser = currentUser
+
+	// Re-resolve LOV queries that reference :current_user (RLS)
+	for i := range h.QueryParams {
+		lovSQL := h.QueryParams[i].resolvedLOVQuery()
+		if lovSQL != "" && strings.Contains(lovSQL, ":current_user") {
+			lovSQL = strings.ReplaceAll(lovSQL, ":current_user", "'"+strings.ReplaceAll(currentUser, "'", "''")+"'")
+			h.QueryParams[i].Options = nil // Clear stale options
+
+			itype := h.QueryParams[i].InputType()
+			rows, err := db.Query(lovSQL)
+			if err == nil {
+				defer rows.Close()
+				cols, _ := rows.Columns()
+				nCols := len(cols)
+				for rows.Next() {
+					switch {
+					case itype == "lov-tree" && nCols >= 3:
+						var val, label string
+						var depth int
+						if err := rows.Scan(&val, &label, &depth); err == nil {
+							h.QueryParams[i].Options = append(h.QueryParams[i].Options, LOVItem{Value: val, Label: label, Depth: depth})
+						}
+					case nCols >= 2:
+						var val, label string
+						if err := rows.Scan(&val, &label); err == nil {
+							h.QueryParams[i].Options = append(h.QueryParams[i].Options, LOVItem{Value: val, Label: label})
+						}
+					default:
+						var val string
+						if err := rows.Scan(&val); err == nil {
+							h.QueryParams[i].Options = append(h.QueryParams[i].Options, LOVItem{Value: val, Label: val})
+						}
+					}
+				}
+			} else {
+				log.Printf("RLS LOV query error for param %s: %v", h.QueryParams[i].Name, err)
+			}
+		}
+	}
+
+	return h, nil
+}
+
 // NewHandlerFromData initializes a Handler using MIGR/JiraMntr JSON data (bytes)
 func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) {
 	var cat Catalog
