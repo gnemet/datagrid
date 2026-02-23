@@ -2,6 +2,21 @@
 
 A high-performance, metadata-driven datagrid component library for Go and HTMX, optimized for PostgreSQL. Built for high-density, expert-centric interfaces with a strict **No-Tailwind** architectural identity.
 
+## 🏗️ Architecture
+
+```mermaid
+graph LR
+    CATALOG["📋 JSON Catalog"] --> RENDER["⚙️ datagrid.Render()"]
+    RENDER --> SQLGEN["SQL Generator"]
+    RENDER --> FILTER["Filter Engine"]
+    RENDER --> SORT["Sort Engine"]
+    SQLGEN --> DB["🐘 PostgreSQL"]
+    DB --> HTMX["🖥️ HTMX Partial"]
+    HTMX --> APP["📦 Consumer App<br/>(Jiramntr, Johanna)"]
+```
+
+> Full architecture diagram: [docs/datagrid_architecture.mmd](docs/datagrid_architecture.mmd)
+
 ## 🚀 Premium Features
 
 - **Metadata-Driven UI**: Configure columns, labels, icons, and behavior using localized JSON catalogs.

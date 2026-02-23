@@ -1,0 +1,73 @@
+%%{init: {'theme': 'dark', 'themeVariables': {'fontSize': '14px'}}}%%
+graph LR
+
+%% ═══════════════════════════════════════════════════════════════
+%% Go Datagrid Component — Architecture v1.5
+%% Regenerate: mmdc -i datagrid_architecture.mmd -o datagrid_architecture.png
+%% ═══════════════════════════════════════════════════════════════
+
+%% ── CONFIGURATION ───────────────────────────────────────────────
+subgraph CONFIG["📋 Configuration"]
+    CATALOG["JSON Catalog<br/>(columns, labels,<br/>filters, icons, i18n)"]
+    LOV["LOV Sources<br/>(List-of-Values)<br/>static / SQL / tree"]
+end
+
+%% ── GO CORE ────────────────────────────────────────────────────
+subgraph CORE["⚙️ Go Datagrid Core"]
+    direction TB
+    RENDER["datagrid.Render()<br/>Main entry point"]
+    SQLGEN["SQL Generator<br/>Go templates →<br/>parameterized query"]
+    FILTER["Filter Engine<br/>Multi-column, search,<br/>default filters"]
+    SORT["Sort Engine<br/>3-phase (ASC/DESC/NONE)<br/>NULLS FIRST/LAST<br/>dynamic JSON sort"]
+    PAGE["Pager<br/>Offset or Cursor-based"]
+    PIVOT["pivot.Render()<br/>Aggregation, subtotals,<br/>dimension swap"]
+end
+
+CATALOG --> RENDER
+LOV --> FILTER
+RENDER --> SQLGEN
+RENDER --> FILTER
+RENDER --> SORT
+RENDER --> PAGE
+
+%% ── DATABASE ───────────────────────────────────────────────────
+subgraph DB["🐘 PostgreSQL"]
+    EXEC["pg_execute_grid()<br/>Streaming JSON/CSV<br/>pg_trgm similarity"]
+end
+
+SQLGEN --> DB
+
+%% ── OUTPUT ─────────────────────────────────────────────────────
+subgraph OUTPUT["🖥️ Browser"]
+    HTMX["HTMX Partial<br/>(HTML table fragment)"]
+    DETAIL["Detail Sidebar<br/>(Record inspector)"]
+    CHOOSER["Column Chooser<br/>(Visibility, order,<br/>width persistence)"]
+    EXPORT["Export<br/>(CSV, clipboard)"]
+end
+
+DB --> HTMX
+HTMX --> DETAIL
+HTMX --> CHOOSER
+HTMX --> EXPORT
+
+%% ── CONSUMERS ──────────────────────────────────────────────────
+subgraph CONSUMERS["📦 Consumer Apps"]
+    JIRAMNTR["Jiramntr<br/>BI Reports, KPI,<br/>Employee tables"]
+    JOHANNA["Johanna<br/>AI SQL results"]
+    CUSTOM["Custom Apps"]
+end
+
+HTMX --> CONSUMERS
+
+%% ── STYLES ──────────────────────────────────────────────────────
+classDef config fill:#4a3a1a,stroke:#f39c12
+classDef core fill:#1a3a4a,stroke:#3498db
+classDef db fill:#2d4a2d,stroke:#27ae60
+classDef output fill:#3a2a4a,stroke:#9b59b6
+classDef consumer fill:#4a2d2d,stroke:#e74c3c
+
+class CATALOG,LOV config
+class RENDER,SQLGEN,FILTER,SORT,PAGE,PIVOT core
+class DB db
+class HTMX,DETAIL,CHOOSER,EXPORT output
+class JIRAMNTR,JOHANNA,CUSTOM consumer
