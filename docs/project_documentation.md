@@ -131,3 +131,50 @@ To maximize memory efficiency, the system avoids loading entire result sets into
 ## Verification Status
 - **Automated**: Full coverage of SQL generation and alphabetical CSV column sorting.
 - **Manual**: Verified in `testapp` (Stateless) and `cursorapp` (Stateful).
+
+## Environment & Secret Management
+
+The project uses **GPG-encrypted environment templates** stored in `opt/envs/`. Raw `.env` files are git-ignored; only `.gpg` artifacts are committed.
+
+### Scripts
+
+| Script | Purpose |
+| :--- | :--- |
+| `scripts/vault.sh` | GPG AES256 lock/unlock/verify/diff/status with shortcut resolution |
+| `scripts/switch_env.sh` | Hostname auto-detection with GPG auto-unlock fallback |
+| `scripts/deploy_butalam.sh` | Full 6-phase deployment pipeline to LAN server |
+
+### Environment Switching Flow
+```
+hostname → opt/envs/.env_{hostname} → .env (root)
+              ↑ auto-unlock from .gpg if raw missing
+```
+
+### Vault Passphrase Resolution
+1. `$VAULT_PASS` environment variable
+2. `./.vault_pass` file (project root)
+3. `~/.vault_pass` file (home directory)
+
+## Deployment Architecture
+
+### Butalam (LAN Server)
+The butalam server is offline (no internet access). Deployment is fully self-contained:
+
+1. **Cross-compile** on dev machine: `CGO_ENABLED=0 GOOS=linux GOARCH=amd64`
+2. **Package**: binary + config + UI + catalogs + systemd service
+3. **Transfer**: `scp` via SSH key (`~/.ssh/butala`)
+4. **Install**: Extract to `/opt/datagrid`, create system user, setup systemd
+5. **Run**: `systemctl restart datagrid`
+
+Target: `http://sys-butalam01:8085`
+
+### Systemd Service
+```ini
+[Service]
+Type=simple
+User=datagrid
+WorkingDirectory=/opt/datagrid
+ExecStart=/opt/datagrid/bin/datagrid-server
+EnvironmentFile=/opt/datagrid/.env
+```
+

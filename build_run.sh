@@ -5,7 +5,7 @@
 
 # Environment switching logic
 if [ ! -z "$1" ] && [[ "$1" != -* ]]; then
-    if [ -f "config/envs/.env_$1" ]; then
+    if [ -f "opt/envs/.env_$1" ]; then
         echo "Switching to environment: $1"
         ./scripts/switch_env.sh "$1"
         shift

@@ -10,6 +10,11 @@ bin/
 **/.env*
 !**/*.gpg
 
+# Environment Templates (Vault-Protected)
+opt/**
+!opt/**/
+!*.gpg
+
 # Go
 vendor/
 go.sum
