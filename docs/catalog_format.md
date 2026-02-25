@@ -63,6 +63,34 @@ The `pivot` object allows deep analytical cross-tabulation.
 
 ---
 
+## Analytics: `pivot2` configuration
+
+The `pivot2` object enables hierarchical tree grids with advanced measure configurations.
+
+```json
+"pivot2": {
+  "levels": [
+    {"column": "project_name", "label": "Project"},
+    {"column": "issue_key", "label": "Issue"}
+  ],
+  "values": [
+    {"column": "estimated_hours", "func": "SUM", "label": "Est. Hours"},
+    {"column": "logged_hours", "func": "SUM", "label": "Logged Hours"},
+    {"expr": "Est. Hours - Logged Hours", "label": "Remaining", "cssRules": [
+      {"when": "< 0", "class": "text-danger"}
+    ]}
+  ]
+}
+```
+
+- **Levels**: Array of `{column, label}` defining the nested row hierarchy.
+- **Values**: Aggregated or computed metrics.
+  - Basic aggregations use `column` and `func`.
+  - Computed measures use `expr` (arithmetic expressions referencing other measure labels).
+  - Both types support `format` (e.g., `"%.2f"`), `showAt` (array of depth levels to render the measure, e.g. `[0]`), and `cssRules` (array of `{when, class}` thresholds).
+
+---
+
 ## Data Integration: `lovs`
 
 Lists of Values (LOVs) power dropdown filters and conditional row styling.

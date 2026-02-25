@@ -218,9 +218,20 @@
         <button class="pivot2-btn" onclick="Pivot2.collapseAll()" title="Collapse All">
             <i class="fas fa-compress-arrows-alt"></i> <span>Collapse All</span>
         </button>
-        <input type="search" class="pivot2-search" name="q" placeholder="🔍 szöveg  |  {oszlop} > érték  |  AND"
-            oninput="Pivot2.localFilter(this.value)" autocomplete="off" />
+        <button class="pivot2-btn" onclick="Pivot2Chart.toggle()" title="Toggle Chart">
+            <i class="fas fa-chart-bar"></i> <span>Chart</span>
+        </button>
+        <button class="pivot2-btn" onclick="Pivot2.exportCSV()" title="Export CSV">
+            <i class="fas fa-download"></i> <span>Export</span>
+        </button>
+        <input type="search" class="pivot2-search" name="q"
+            placeholder="🔍 text  |  {col} > 10  |  {col} IN (a,b)  |  LIKE" oninput="Pivot2.localFilter(this.value)"
+            autocomplete="off" />
         <span class="pivot2-count">{{ $res.TotalCount }} records</span>
+    </div>
+
+    <div id="dg-pivot2-chart-container"
+        style="display: none; padding: 1rem; background: var(--dg-surface-alt, #2a2a3e); border-bottom: 1px solid var(--dg-border, #444);">
     </div>
 
     <table class="datagrid-table pivot2-table">
@@ -441,4 +452,5 @@
         window.Pivot2 = Pivot2;
     })();
 </script>
+<script src="/static/js/pivot2-chart.js"></script>
 {{end}}

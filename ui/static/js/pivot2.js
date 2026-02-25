@@ -16,6 +16,181 @@
         },
 
         /**
+         * Export visible rows to CSV
+         */
+        exportCSV: function () {
+            var w = document.getElementById('dg-pivot2-wrapper');
+            if (!w) return;
+            var table = w.querySelector('.pivot2-table');
+            if (!table) return;
+
+            var csv = [];
+
+            // Extract Headers
+            var headers = [];
+            table.querySelectorAll('thead th').forEach(function (th) {
+                headers.push('"' + th.textContent.trim().replace(/"/g, '""') + '"');
+            });
+            csv.push(headers.join(';'));
+
+            // Extract visible rows
+            var rows = table.querySelectorAll('tbody tr.pivot2-row:not(.pivot2-hidden):not(.pivot2-filtered-out)');
+            rows.forEach(function (row) {
+                var rowData = [];
+                row.querySelectorAll('td').forEach(function (td, idx) {
+                    var text = td.textContent.trim();
+                    if (idx === 0) {
+                        text = (td.querySelector('.pivot2-text') || td).textContent.trim();
+                        var depth = parseInt(row.dataset.depth, 10) || 0;
+                        if (depth > 0) {
+                            text = " ".repeat(depth * 4) + text; // pseudo-indent 
+                        }
+                    }
+                    rowData.push('"' + text.replace(/"/g, '""') + '"');
+                });
+                csv.push(rowData.join(';'));
+            });
+
+            // Footer
+            var footer = table.querySelector('tfoot tr.pivot2-grand-total-row');
+            if (footer) {
+                var footerData = [];
+                footer.querySelectorAll('td').forEach(function (td) {
+                    footerData.push('"' + td.textContent.trim().replace(/"/g, '""') + '"');
+                });
+                csv.push(footerData.join(';'));
+            }
+
+            var blob = new Blob(["\ufeff" + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'pivot_export_' + new Date().toISOString().slice(0, 10) + '.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        },
+
+        // Smart filter: supports {column} > value, {col} < val AND {col2} >= val2, or plain text
+        localFilter: function (term) {
+            var w = document.getElementById('dg-pivot2-wrapper');
+            if (!w) return;
+            var input = term.trim();
+            var rows = w.querySelectorAll('tr.pivot2-row');
+            if (!input) {
+                // Clear filter: show depth-0 rows, hide deeper
+                rows.forEach(function (r) {
+                    r.classList.remove('pivot2-filtered-out');
+                    if (parseInt(r.dataset.depth, 10) > 0) {
+                        r.classList.add('pivot2-hidden');
+                    } else {
+                        r.classList.remove('pivot2-hidden');
+                    }
+                    var c = r.querySelector('.pivot2-chevron');
+                    if (c) { c.classList.remove('pivot2-expanded'); c.classList.add('pivot2-collapsed'); }
+                });
+                return;
+            }
+
+            // Parse smart expressions: {col} op val [AND {col} op val ...]
+            var exprRe = /\{([^}]+)\}\s*(>=|<=|!=|>|<|=|LIKE|IN|BETWEEN)\s*(.+?)(?=\s+AND\s+\{|$)/gi;
+            var conditions = [];
+            var m;
+            // Reset regex explicitly just in case
+            exprRe.lastIndex = 0;
+            while ((m = exprRe.exec(input)) !== null) {
+                conditions.push({ col: m[1].trim(), op: m[2], val: m[3].trim() });
+            }
+
+            if (conditions.length > 0) {
+                this._smartFilter(w, rows, conditions);
+            } else {
+                this._textFilter(w, rows, input.toLowerCase());
+            }
+        },
+
+        // Column-value expression filter
+        _smartFilter: function (w, rows, conditions) {
+            var headers = w.querySelectorAll('table thead th');
+            var colMap = {};
+            headers.forEach(function (th, idx) {
+                colMap[th.textContent.trim().toLowerCase()] = idx;
+            });
+
+            var resolved = conditions.map(function (c) {
+                var idx = colMap[c.col.toLowerCase()];
+                return { idx: idx, op: c.op, val: c.val };
+            }).filter(function (c) { return c.idx !== undefined; });
+
+            if (resolved.length === 0) return;
+
+            var rowArr = Array.from(rows);
+            rowArr.forEach(function (r) { r.classList.add('pivot2-filtered-out'); r.classList.remove('pivot2-hidden'); });
+
+            var ops = {
+                '>': function (cVal, fVal) { return parseFloat(cVal) > parseFloat(fVal); },
+                '<': function (cVal, fVal) { return parseFloat(cVal) < parseFloat(fVal); },
+                '>=': function (cVal, fVal) { return parseFloat(cVal) >= parseFloat(fVal); },
+                '<=': function (cVal, fVal) { return parseFloat(cVal) <= parseFloat(fVal); },
+                '=': function (cVal, fVal) { return parseFloat(cVal) === parseFloat(fVal); },
+                '!=': function (cVal, fVal) { return parseFloat(cVal) !== parseFloat(fVal); },
+                'LIKE': function (cVal, fVal) {
+                    var search = String(fVal).toLowerCase().replace(/%/g, '');
+                    return String(cVal).toLowerCase().indexOf(search) !== -1;
+                },
+                'IN': function (cVal, fVal) {
+                    var arr = String(fVal).replace(/^\(/, '').replace(/\)$/, '').split(',');
+                    var valLower = String(cVal).toLowerCase();
+                    return arr.some(function (item) { return item.trim().toLowerCase() === valLower; });
+                },
+                'BETWEEN': function (cVal, fVal) {
+                    var parts = String(fVal).split(/ AND /i);
+                    if (parts.length !== 2) return false;
+                    var val = parseFloat(cVal);
+                    return val >= parseFloat(parts[0]) && val <= parseFloat(parts[1]);
+                }
+            };
+
+            rowArr.forEach(function (r, idx) {
+                if (parseInt(r.dataset.depth, 10) !== 0) return;
+                var cells = r.querySelectorAll('td');
+                var match = resolved.every(function (cond) {
+                    var cell = cells[cond.idx];
+                    if (!cell) return false;
+
+                    var cellText = cell.textContent.trim();
+                    if (cond.idx === 0) {
+                        var innerTextEl = cell.querySelector('.pivot2-text');
+                        if (innerTextEl) cellText = innerTextEl.textContent.trim();
+                    }
+
+                    var opUpper = cond.op.toUpperCase();
+                    var cVal = cellText;
+
+                    if (['>', '<', '>=', '<=', '=', '!='].indexOf(opUpper) !== -1) {
+                        cVal = cellText.replace(/[^\d.\-]/g, '');
+                        if (cVal === '') return false; // avoid NaN matching defaults
+                    }
+
+                    return ops[opUpper] && ops[opUpper](cVal, cond.val);
+                });
+
+                if (match) {
+                    r.classList.remove('pivot2-filtered-out');
+                    var c = r.querySelector('.pivot2-chevron');
+                    if (c) { c.classList.remove('pivot2-collapsed'); c.classList.add('pivot2-expanded'); }
+                    for (var j = idx + 1; j < rowArr.length; j++) {
+                        if (parseInt(rowArr[j].dataset.depth, 10) === 0) break;
+                        rowArr[j].classList.remove('pivot2-filtered-out');
+                        var cc = rowArr[j].querySelector('.pivot2-chevron');
+                        if (cc) { cc.classList.remove('pivot2-collapsed'); cc.classList.add('pivot2-expanded'); }
+                    }
+                }
+            });
+        },
+
+        /**
          * Toggle children of a group row.
          * @param {HTMLElement} row - The clicked <tr> group row
          */
@@ -23,9 +198,9 @@
             const key = row.dataset.key;
             const depth = parseInt(row.dataset.depth, 10);
             const chevron = row.querySelector('.pivot2-chevron');
-            const isExpanding = chevron && chevron.classList.contains('pivot2-collapsed') || 
-                               (chevron && !chevron.classList.contains('pivot2-expanded'));
-            
+            const isExpanding = chevron && chevron.classList.contains('pivot2-collapsed') ||
+                (chevron && !chevron.classList.contains('pivot2-expanded'));
+
             // Find all direct children (depth = current + 1, key starts with this key)
             const table = row.closest('table');
             const rows = table.querySelectorAll('tr.pivot2-row');

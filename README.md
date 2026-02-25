@@ -22,6 +22,7 @@ graph LR
 - **Metadata-Driven UI**: Configure columns, labels, icons, and behavior using localized JSON catalogs.
 - **Advanced Filtering & Search**:
   - **Multi-Column Filtering**: Combine dropdown filters with global search for precision data mining.
+  - **Smart Filtering (Pivot2)**: Intuitive inline syntax (`{column} > value`, AND support).
   - **Advanced Search**: Configurable search columns, operators, and transactional similarity thresholds (`pg_trgm`).
   - **Default Filters**: Define default filter states in the catalog for instant specialized views.
 - **Expert Minimalist Sorting**: 
@@ -32,6 +33,7 @@ graph LR
 - **Robust SQL Generation**:
   - Automatic double-quoting of identifiers to prevent collisions with reserved keywords.
   - Parentheses wrapping for complex searchable column expressions.
+  - **RLS-Aware Context**: `NewHandlerFromDataWithUser` enables Row Level Security (RLS) and context-aware dynamic LOV resolution.
 - **Forensic DOM Standard**:
   - Rows tagged with `data-json` containing the full record metadata.
   - Cells tagged with `.col-{field}` for easy CSS targeting and scraping.
@@ -41,7 +43,9 @@ graph LR
   - **CSS-Based Zebra Striping**: Modern, theme-aware row shading using `nth-child` selectors (no inline styles).
   - **JSON Key Expansion**: Dynamically expand nested JSON objects into table columns at runtime.
 - **Persistence Layer**: Automatic persistence of column visibility, width, order, and sorting in `localStorage`.
-- **Pivot Table**: Analytical mode for data aggregation and cross-tabulation with subtotals.
+- **Advanced Analytics**:
+  - **Pivot Table**: Cross-tabulation mode for data aggregation with subtotals.
+  - **Hierarchical Pivot2**: True multi-level tree grids with computed measures, runtime evaluation (`expr`), and conditional formatting (`cssRules`).
 - **Comprehensive Testing Tools**:
   - Built-in data generator (`scripts/generate_data.py`) creating realistic, relational datasets for stress testing.
 

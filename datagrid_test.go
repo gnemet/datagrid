@@ -1,7 +1,9 @@
 package datagrid
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/csv"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -149,5 +151,92 @@ func TestIntegrationFetchData(t *testing.T) {
 	// Check JSON expansion pattern
 	if _, ok := result.Records[0]["_json"]; !ok {
 		t.Errorf("Expected _json field in record for sidebar support")
+	}
+}
+
+func TestIntegrationStreamCSV(t *testing.T) {
+	// Try to load .env from project root
+	_ = godotenv.Load("../../.env")
+
+	host := os.Getenv("DB_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+	port := os.Getenv("DB_PORT")
+	if port == "" {
+		port = "5433"
+	}
+	user := os.Getenv("DB_USER")
+	if user == "" {
+		user = "root"
+	}
+	password := os.Getenv("DB_PASSWORD")
+	if password == "" {
+		password = "soa123"
+	}
+	dbname := os.Getenv("DB_NAME")
+	if dbname == "" {
+		dbname = "db01"
+	}
+	schema := os.Getenv("DB_SCHEMA")
+	if schema == "" {
+		schema = "datagrid"
+	}
+
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable search_path=%s",
+		host, port, user, password, dbname, schema)
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		t.Skip("Postgres not available, skipping CSV integration test:", err)
+		return
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		t.Skip("Postgres not reachable, skipping CSV integration test:", err)
+		return
+	}
+
+	cols := []UIColumn{
+		{Field: "id", Label: "ID", Visible: true},
+		{Field: "user_name", Label: "User", Visible: true},
+	}
+	h := &Handler{DB: db, TableName: "responsibility", Columns: cols}
+
+	params := RequestParams{Limit: 5, Offset: 0}
+
+	var buf bytes.Buffer
+	err = h.StreamCSV(&buf, params)
+	if err != nil {
+		t.Fatalf("StreamCSV failed: %v", err)
+	}
+
+	// Parse CSV output
+	reader := csv.NewReader(&buf)
+	reader.Comma = ';' // datagrid_execute_csv outputs ; delimited CSV
+	
+	records, err := reader.ReadAll()
+	if err != nil {
+		t.Fatalf("Failed to parse output CSV: %v", err)
+	}
+
+	if len(records) == 0 {
+		t.Fatalf("Expected CSV records, got empty buffer")
+	}
+
+	// Validate headers (first record)
+	headers := records[0]
+	if len(headers) != 2 {
+		t.Errorf("Expected 2 columns in header, got %d", len(headers))
+	}
+	if headers[0] != "ID" || headers[1] != "User" {
+		t.Errorf("Expected headers [ID, User], got %v", headers)
+	}
+
+	// Validate data rows (we expect at least 2 seeded records based on previous test)
+	// records length = header (1) + data rows (>=2)
+	if len(records) < 3 {
+		t.Errorf("Expected at least 2 data rows + header, got total %d rows", len(records))
 	}
 }

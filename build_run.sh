@@ -21,8 +21,8 @@ if [ ! -f ".env" ]; then
     fi
 fi
 
-# Run tests from the new pkg location
-go test ./pkg/datagrid/... || exit 1
+# Run tests from the new root location
+go test ./... || exit 1
 
 set -a; source .env; set +a
 echo "Environment: $ENV_NAME"

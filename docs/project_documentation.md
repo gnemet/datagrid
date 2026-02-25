@@ -29,12 +29,22 @@ An analytical mode for data aggregation and cross-tabulation.
 - **Measures**: Support for multiple aggregations (SUM, AVG, COUNT, etc.).
 - **Interactivity**: Support for dimension swapping and subtotal toggling.
 
+### 🌳 Hierarchical Pivot2 Table
+An advanced hierarchical data tree grid for exploring nested group summaries.
+- **Collapsible Levels**: Nested row levels (e.g. Project -> Issue -> User) that can be expanded or collapsed.
+- **Computed Measures**: Runtime evaluation of arithmetic expressions combining multiple aggregated values (`expr`).
+- **Conditional Formatting**: Measure-specific CSS classes applied via threshold rules (`cssRules`).
+- **Smart Filter**: Integrated client-side search supporting `{column} > value` inline syntax, exact matches, text fallback, and implicit `AND` operators across multiple space-separated terms.
+
 ### 📈 Future Roadmap: Graphs
 Upcoming versions will include integrated charting (Bar, Line, Pie) directly derived from Pivot/Grid datasets, leveraging the same streaming architecture.
 
 ## SQL & Execution Modes
 
 The project standardizes on a **Unified Hybrid SQL** model. SQL is generated via Go templates (`grid.sql.tmpl`) and executed through Postgres wrappers.
+
+### RLS-Aware Initialization
+The datagrid includes context-aware session injection. By using `NewHandlerFromDataWithUser()`, the datagrid injects the current authenticated user identity into PostgreSQL prior to executing queries or resolving dynamic SQL LOVs. This ensures full compliance with Row Level Security (RLS) policies defined in the database.
 
 ### 1. Normal (Connectless) Mode
 The stateless connection method, ideal for scalable APIs.
