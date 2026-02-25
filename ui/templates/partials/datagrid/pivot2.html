@@ -1,0 +1,444 @@
+{{define "datagrid_pivot2"}}
+<style>
+    /* Pivot2 — Hierarchical Tree Grid Styles (Inlined) */
+    .datagrid-pivot2-container {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .pivot2-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: var(--dg-surface, #1e1e2e);
+        border-bottom: 1px solid var(--dg-border, #333);
+    }
+
+    .pivot2-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.3rem 0.7rem;
+        border: 1px solid var(--dg-border, #444);
+        border-radius: var(--dg-radius, 4px);
+        background: var(--dg-surface-alt, #2a2a3e);
+        color: var(--dg-text, #cdd6f4);
+        cursor: pointer;
+        font-size: 0.78rem;
+        transition: background 0.15s, border-color 0.15s;
+    }
+
+    .pivot2-btn:hover {
+        background: var(--dg-hover, #3a3a52);
+        border-color: var(--dg-accent, #89b4fa);
+    }
+
+    .pivot2-count {
+        margin-left: auto;
+        font-size: 0.75rem;
+        color: var(--dg-text-muted, #888);
+    }
+
+    .pivot2-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+    }
+
+    .pivot2-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--dg-surface, #1e1e2e);
+        padding: 0.5rem 0.75rem;
+        border-bottom: 2px solid var(--dg-border, #444);
+        font-weight: 600;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .pivot2-measure-header {
+        text-align: right !important;
+        min-width: 90px;
+    }
+
+    .pivot2-row {
+        cursor: default;
+        transition: background 0.1s;
+        border-bottom: 1px solid var(--dg-border-light, #2a2a3e);
+    }
+
+    .pivot2-row:hover {
+        background: var(--dg-hover, rgba(137, 180, 250, 0.06));
+    }
+
+    .pivot2-hidden {
+        display: none;
+    }
+
+    .pivot2-group {
+        cursor: pointer;
+        font-weight: 600;
+        background: var(--dg-surface-alt, rgba(30, 30, 46, 0.5));
+    }
+
+    .pivot2-group:hover {
+        background: var(--dg-hover, rgba(137, 180, 250, 0.1));
+    }
+
+    .pivot2-depth-0 {
+        background: var(--dg-surface-alt, rgba(40, 40, 60, 0.6));
+    }
+
+    .pivot2-depth-1 {
+        background: var(--dg-surface, rgba(30, 30, 46, 0.3));
+    }
+
+    .pivot2-depth-2,
+    .pivot2-leaf {
+        font-weight: 400;
+        background: transparent;
+    }
+
+    .pivot2-label {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 0.4rem 0.5rem;
+    }
+
+    .pivot2-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .pivot2-chevron {
+        display: inline-block;
+        width: 1em;
+        text-align: center;
+        font-size: 0.65rem;
+        color: var(--dg-accent, #89b4fa);
+        transition: transform 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .pivot2-chevron.pivot2-expanded {
+        transform: rotate(90deg);
+    }
+
+    .pivot2-chevron.pivot2-collapsed {
+        transform: rotate(0deg);
+    }
+
+    .pivot2-leaf-icon {
+        display: inline-block;
+        width: 1em;
+        flex-shrink: 0;
+    }
+
+    .pivot2-table td.col-num {
+        text-align: right;
+        padding: 0.4rem 0.75rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pivot2-grand-total-row {
+        font-weight: 700;
+        background: var(--dg-surface-alt, #2a2a3e);
+        border-top: 2px solid var(--dg-accent, #89b4fa);
+    }
+
+    .pivot2-footer-label {
+        padding: 0.5rem 0.75rem;
+        font-style: italic;
+    }
+
+    .pivot2-grand-total {
+        color: var(--dg-accent, #89b4fa);
+    }
+
+    .pivot2-label-header {
+        min-width: 200px;
+    }
+
+    .pivot2-search {
+        flex: 1 1 320px;
+        padding: 0.3rem 0.6rem;
+        border: 1px solid var(--dg-border, #444);
+        border-radius: var(--dg-radius, 4px);
+        background: var(--dg-surface-alt, #2a2a3e);
+        color: var(--dg-text, #cdd6f4);
+        font-size: 0.78rem;
+        outline: none;
+        transition: border-color 0.15s;
+    }
+
+    .pivot2-search:focus {
+        border-color: var(--dg-accent, #89b4fa);
+    }
+
+    .pivot2-search::placeholder {
+        color: var(--dg-text-muted, #666);
+    }
+
+    .pivot2-filtered-out {
+        display: none;
+    }
+
+    .pivot2-warn {
+        color: #fab387;
+        background: rgba(250, 179, 135, 0.08);
+    }
+
+    .pivot2-danger {
+        color: #f38ba8;
+        background: rgba(243, 139, 168, 0.1);
+        font-weight: 700;
+    }
+
+    .pivot2-ok {
+        color: #a6e3a1;
+    }
+</style>
+
+<div class="datagrid-pivot2-container" id="dg-pivot2-wrapper">
+    {{ $res := .Pivot2Result }}
+    {{ $measures := $res.Measures }}
+    {{ $numMeasures := len $measures }}
+    {{ $flatRows := flattenTree $res.Tree }}
+
+    <div class="pivot2-toolbar">
+        <button class="pivot2-btn" onclick="Pivot2.expandAll()" title="Expand All">
+            <i class="fas fa-expand-arrows-alt"></i> <span>Expand All</span>
+        </button>
+        <button class="pivot2-btn" onclick="Pivot2.collapseAll()" title="Collapse All">
+            <i class="fas fa-compress-arrows-alt"></i> <span>Collapse All</span>
+        </button>
+        <input type="search" class="pivot2-search" name="q" placeholder="🔍 szöveg  |  {oszlop} > érték  |  AND"
+            oninput="Pivot2.localFilter(this.value)" autocomplete="off" />
+        <span class="pivot2-count">{{ $res.TotalCount }} records</span>
+    </div>
+
+    <table class="datagrid-table pivot2-table">
+        <thead>
+            <tr>
+                <th class="pivot2-label-header">
+                    {{ range $i, $lvl := $res.Levels }}{{ if $i }} / {{ end }}{{ $lvl }}{{ end }}
+                </th>
+                {{ range $measures }}
+                <th class="pivot2-measure-header col-num">{{ . }}</th>
+                {{ end }}
+            </tr>
+        </thead>
+        <tbody>
+            {{ range $row := $flatRows }}
+            <tr class="pivot2-row pivot2-depth-{{ $row.Depth }}{{ if not $row.IsLeaf }} pivot2-group{{ else }} pivot2-leaf{{ end }}{{ if gt $row.Depth 0 }} pivot2-hidden{{ end }}"
+                data-depth="{{ $row.Depth }}" data-key="{{ $row.Key }}" {{ if not $row.IsLeaf
+                }}onclick="Pivot2.toggle(this)" {{ end }}>
+                <td class="pivot2-label" style="padding-left: calc({{ $row.Depth }} * 1.4rem + 0.5rem)">
+                    {{ if not $row.IsLeaf }}
+                    <span class="pivot2-chevron">▶</span>
+                    {{ else }}
+                    <span class="pivot2-leaf-icon"></span>
+                    {{ end }}
+                    <span class="pivot2-text">{{ $row.Label }}</span>
+                </td>
+                {{ range $mKey := $measures }}
+                {{ if index $row.HiddenMeasures $mKey }}
+                <td class="col-num pivot2-hidden-val"></td>
+                {{ else }}
+                <td class="col-num{{ with index $row.CSSClasses $mKey }} {{ . }}{{ end }}">
+                    {{- with index $row.FormattedVals $mKey }}{{ . }}{{ else }}{{ formatNum (index $row.Values $mKey)
+                    }}{{ end -}}
+                </td>
+                {{ end }}
+                {{ end }}
+            </tr>
+            {{ end }}
+        </tbody>
+        <tfoot>
+            <tr class="pivot2-grand-total-row">
+                <td class="pivot2-footer-label">Grand Total</td>
+                {{ range $mKey := $measures }}
+                <td class="col-num pivot2-grand-total">
+                    {{- with index $res.FormattedGrandTotal $mKey }}{{ . }}{{ else }}{{ formatNum (index $res.GrandTotal
+                    $mKey) }}{{ end -}}
+                </td>
+                {{ end }}
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<script>
+    (function () {
+        'use strict';
+        var Pivot2 = {
+            toggle: function (row) {
+                var key = row.dataset.key;
+                var depth = parseInt(row.dataset.depth, 10);
+                var chevron = row.querySelector('.pivot2-chevron');
+                var table = row.closest('table');
+                var rows = Array.from(table.querySelectorAll('tr.pivot2-row'));
+                var rowIdx = rows.indexOf(row);
+
+                if (chevron.classList.contains('pivot2-expanded')) {
+                    chevron.classList.remove('pivot2-expanded');
+                    chevron.classList.add('pivot2-collapsed');
+                    for (var i = rowIdx + 1; i < rows.length; i++) {
+                        var childDepth = parseInt(rows[i].dataset.depth, 10);
+                        if (childDepth <= depth) break;
+                        rows[i].classList.add('pivot2-hidden');
+                        var cc = rows[i].querySelector('.pivot2-chevron');
+                        if (cc) { cc.classList.remove('pivot2-expanded'); cc.classList.add('pivot2-collapsed'); }
+                    }
+                } else {
+                    chevron.classList.remove('pivot2-collapsed');
+                    chevron.classList.add('pivot2-expanded');
+                    for (var i = rowIdx + 1; i < rows.length; i++) {
+                        var childDepth = parseInt(rows[i].dataset.depth, 10);
+                        if (childDepth <= depth) break;
+                        if (childDepth === depth + 1) rows[i].classList.remove('pivot2-hidden');
+                    }
+                }
+            },
+            expandAll: function () {
+                var w = document.getElementById('dg-pivot2-wrapper');
+                if (!w) return;
+                w.querySelectorAll('tr.pivot2-row').forEach(function (r) {
+                    r.classList.remove('pivot2-hidden');
+                    var c = r.querySelector('.pivot2-chevron');
+                    if (c) { c.classList.remove('pivot2-collapsed'); c.classList.add('pivot2-expanded'); }
+                });
+            },
+            collapseAll: function () {
+                var w = document.getElementById('dg-pivot2-wrapper');
+                if (!w) return;
+                w.querySelectorAll('tr.pivot2-row').forEach(function (r) {
+                    if (parseInt(r.dataset.depth, 10) > 0) r.classList.add('pivot2-hidden');
+                    var c = r.querySelector('.pivot2-chevron');
+                    if (c) { c.classList.remove('pivot2-expanded'); c.classList.add('pivot2-collapsed'); }
+                });
+            },
+            // Smart filter: supports {column} > value, {col} < val AND {col2} >= val2, or plain text
+            localFilter: function (term) {
+                var w = document.getElementById('dg-pivot2-wrapper');
+                if (!w) return;
+                var input = term.trim();
+                var rows = w.querySelectorAll('tr.pivot2-row');
+                if (!input) {
+                    // Clear filter: show depth-0 rows, hide deeper
+                    rows.forEach(function (r) {
+                        r.classList.remove('pivot2-filtered-out');
+                        if (parseInt(r.dataset.depth, 10) > 0) {
+                            r.classList.add('pivot2-hidden');
+                        } else {
+                            r.classList.remove('pivot2-hidden');
+                        }
+                        var c = r.querySelector('.pivot2-chevron');
+                        if (c) { c.classList.remove('pivot2-expanded'); c.classList.add('pivot2-collapsed'); }
+                    });
+                    return;
+                }
+
+                // Try to parse smart expressions: {col} op val [AND {col} op val ...]
+                var exprRe = /\{([^}]+)\}\s*(>=|<=|!=|>|<|=)\s*(-?\d+\.?\d*)/g;
+                var conditions = [];
+                var m;
+                while ((m = exprRe.exec(input)) !== null) {
+                    conditions.push({ col: m[1].trim(), op: m[2], val: parseFloat(m[3]) });
+                }
+
+                if (conditions.length > 0) {
+                    this._smartFilter(w, rows, conditions);
+                } else {
+                    this._textFilter(w, rows, input.toLowerCase());
+                }
+            },
+
+            // Column-value expression filter
+            _smartFilter: function (w, rows, conditions) {
+                // Build column index map from thead
+                var headers = w.querySelectorAll('table thead th');
+                var colMap = {}; // header text → column index (0-based)
+                headers.forEach(function (th, idx) {
+                    colMap[th.textContent.trim().toLowerCase()] = idx;
+                });
+
+                // Resolve column indices for each condition
+                var resolved = conditions.map(function (c) {
+                    var idx = colMap[c.col.toLowerCase()];
+                    return { idx: idx, op: c.op, val: c.val };
+                }).filter(function (c) { return c.idx !== undefined; });
+
+                if (resolved.length === 0) return; // no valid columns found
+
+                var rowArr = Array.from(rows);
+                // First: hide everything
+                rowArr.forEach(function (r) { r.classList.add('pivot2-filtered-out'); r.classList.remove('pivot2-hidden'); });
+
+                // Check depth-0 rows against all conditions
+                var ops = {
+                    '>': function (a, b) { return a > b }, '<': function (a, b) { return a < b },
+                    '>=': function (a, b) { return a >= b }, '<=': function (a, b) { return a <= b },
+                    '=': function (a, b) { return a === b }, '!=': function (a, b) { return a !== b }
+                };
+
+                rowArr.forEach(function (r, idx) {
+                    if (parseInt(r.dataset.depth, 10) !== 0) return;
+                    var cells = r.querySelectorAll('td');
+                    var match = resolved.every(function (cond) {
+                        var cell = cells[cond.idx];
+                        if (!cell) return false;
+                        var raw = cell.textContent.replace(/[^\d.\-]/g, '').trim();
+                        var num = parseFloat(raw);
+                        if (isNaN(num)) return false;
+                        return ops[cond.op](num, cond.val);
+                    });
+                    if (match) {
+                        // Show this row and all its descendants
+                        r.classList.remove('pivot2-filtered-out');
+                        var c = r.querySelector('.pivot2-chevron');
+                        if (c) { c.classList.remove('pivot2-collapsed'); c.classList.add('pivot2-expanded'); }
+                        for (var j = idx + 1; j < rowArr.length; j++) {
+                            if (parseInt(rowArr[j].dataset.depth, 10) === 0) break;
+                            rowArr[j].classList.remove('pivot2-filtered-out');
+                            var cc = rowArr[j].querySelector('.pivot2-chevron');
+                            if (cc) { cc.classList.remove('pivot2-collapsed'); cc.classList.add('pivot2-expanded'); }
+                        }
+                    }
+                });
+            },
+
+            // Plain text search (original behavior)
+            _textFilter: function (w, rows, needle) {
+                var rowArr = Array.from(rows);
+                rowArr.forEach(function (r) { r.classList.add('pivot2-filtered-out'); r.classList.remove('pivot2-hidden'); });
+                rowArr.forEach(function (r, idx) {
+                    var label = (r.querySelector('.pivot2-text') || {}).textContent || '';
+                    if (label.toLowerCase().indexOf(needle) >= 0) {
+                        r.classList.remove('pivot2-filtered-out');
+                        var myDepth = parseInt(r.dataset.depth, 10);
+                        for (var j = idx - 1; j >= 0; j--) {
+                            var anc = rowArr[j];
+                            var ancDepth = parseInt(anc.dataset.depth, 10);
+                            if (ancDepth < myDepth) {
+                                anc.classList.remove('pivot2-filtered-out');
+                                var c = anc.querySelector('.pivot2-chevron');
+                                if (c) { c.classList.remove('pivot2-collapsed'); c.classList.add('pivot2-expanded'); }
+                                myDepth = ancDepth;
+                            }
+                            if (ancDepth === 0) break;
+                        }
+                    }
+                });
+            }
+        };
+        window.Pivot2 = Pivot2;
+    })();
+</script>
+{{end}}

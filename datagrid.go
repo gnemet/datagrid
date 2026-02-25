@@ -71,6 +71,7 @@ type DatagridConfig struct {
 	Searchable       SearchableConfig             `json:"searchable"`
 	IconStyleLibrary string                       `json:"iconStyleLibrary,omitempty"`
 	Pivot            *PivotConfig                 `json:"pivot,omitempty"`
+	Pivot2           *Pivot2Config                `json:"pivot2,omitempty"`
 }
 
 type PivotConfig struct {
@@ -120,9 +121,19 @@ func (pc *PivotConfig) GetColColumns() []string {
 }
 
 type PivotValueConfig struct {
-	Column string `json:"column"`
-	Func   string `json:"func"`            // SUM, AVG, etc.
-	Label  string `json:"label,omitempty"` // Custom label for header
+	Column   string         `json:"column" yaml:"column"`
+	Func     string         `json:"func" yaml:"func"`                     // SUM, AVG, etc.
+	Label    string         `json:"label,omitempty" yaml:"label"`          // Custom label for header
+	ShowAt   []int          `json:"show_at,omitempty" yaml:"show_at"`      // If set, only show value at these depth levels
+	Expr     string         `json:"expr,omitempty" yaml:"expr"`            // Computed: arithmetic on other measure labels (e.g., "Belső óra - Ügyfél óra")
+	Format   string         `json:"format,omitempty" yaml:"format"`        // Printf format (e.g., "%.0f%%")
+	CSSRules []PivotCSSRule `json:"css_rules,omitempty" yaml:"css_rules"`  // Conditional CSS classes
+}
+
+// PivotCSSRule applies a CSS class when a measure value matches a condition.
+type PivotCSSRule struct {
+	When  string `json:"when" yaml:"when"`   // Condition: "> 10", "< 90", ">= 0"
+	Class string `json:"class" yaml:"class"` // CSS class to apply
 }
 
 type SearchableConfig struct {
@@ -304,8 +315,9 @@ type TableResult struct {
 	ListEndpoint        string // HX-Get Endpoint
 	HasJSONColumn       bool   // For Expand Keys button
 	PivotEndpoint       string // Endpoint for pivot data
-	ViewMode            string // "grid" or "pivot"
+	ViewMode            string // "grid", "pivot", or "pivot2"
 	PivotResult         *PivotResult
+	Pivot2Result        *Pivot2Result
 	LOVChooserThreshold int
 	App                 struct {
 		Name string
@@ -1681,6 +1693,31 @@ func (h *Handler) buildOrder(sorts []string) string {
 	return "ORDER BY " + strings.Join(clauses, ", ")
 }
 
+// RenderPivot2 renders a hierarchical pivot2 tree-grid from pre-fetched records.
+// This is the public API for external callers (e.g. jiramntr's BIQueryExecuteHandler).
+// It writes the rendered HTML directly to w.
+func RenderPivot2(w io.Writer, records []map[string]interface{}, cfg *Pivot2Config, title string, lang string) error {
+	pivotRes := Pivot2Data(records, cfg)
+
+	res := &TableResult{
+		Title:        title,
+		ViewMode:     "pivot2",
+		Pivot2Result: pivotRes,
+		Lang:         lang,
+		CurrentLang:  lang,
+	}
+
+	funcs := TemplateFuncs()
+	tmpl, err := template.New("pivot2_standalone").Funcs(funcs).ParseFS(UIAssets,
+		"ui/templates/partials/datagrid/pivot2.html",
+	)
+	if err != nil {
+		return fmt.Errorf("pivot2 template parse error: %w", err)
+	}
+
+	return tmpl.ExecuteTemplate(w, "datagrid_pivot2", res)
+}
+
 // TemplateFuncs returns a map of standard datagrid template functions
 func TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
@@ -1748,6 +1785,9 @@ func TemplateFuncs() template.FuncMap {
 			}
 			return result
 		},
+
+		// pivot2: flatten tree for template rendering
+		"flattenTree": FlattenTree,
 	}
 }
 

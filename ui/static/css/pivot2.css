@@ -1,0 +1,177 @@
+/* ======================================================
+   Pivot2 — Hierarchical Tree Grid Styles
+   ====================================================== */
+
+.datagrid-pivot2-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Toolbar */
+.pivot2-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--dg-surface, #1e1e2e);
+    border-bottom: 1px solid var(--dg-border, #333);
+}
+
+.pivot2-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--dg-border, #444);
+    border-radius: var(--dg-radius, 4px);
+    background: var(--dg-surface-alt, #2a2a3e);
+    color: var(--dg-text, #cdd6f4);
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.pivot2-btn:hover {
+    background: var(--dg-hover, #3a3a52);
+    border-color: var(--dg-accent, #89b4fa);
+}
+
+.pivot2-count {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--dg-text-muted, #888);
+}
+
+/* Table */
+.pivot2-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.pivot2-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--dg-surface, #1e1e2e);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 2px solid var(--dg-border, #444);
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.pivot2-measure-header {
+    text-align: right !important;
+    min-width: 90px;
+}
+
+/* Rows */
+.pivot2-row {
+    cursor: default;
+    transition: background 0.1s;
+    border-bottom: 1px solid var(--dg-border-light, #2a2a3e);
+}
+
+.pivot2-row:hover {
+    background: var(--dg-hover, rgba(137, 180, 250, 0.06));
+}
+
+.pivot2-hidden {
+    display: none;
+}
+
+/* Group rows — bold subtotal style */
+.pivot2-group {
+    cursor: pointer;
+    font-weight: 600;
+    background: var(--dg-surface-alt, rgba(30, 30, 46, 0.5));
+}
+
+.pivot2-group:hover {
+    background: var(--dg-hover, rgba(137, 180, 250, 0.1));
+}
+
+/* Depth-based shading */
+.pivot2-depth-0 {
+    background: var(--dg-surface-alt, rgba(40, 40, 60, 0.6));
+}
+
+.pivot2-depth-1 {
+    background: var(--dg-surface, rgba(30, 30, 46, 0.3));
+}
+
+.pivot2-depth-2,
+.pivot2-leaf {
+    font-weight: 400;
+    background: transparent;
+}
+
+/* Label cell */
+.pivot2-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0.4rem 0.5rem;
+}
+
+.pivot2-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Chevron */
+.pivot2-chevron {
+    display: inline-block;
+    width: 1em;
+    text-align: center;
+    font-size: 0.65rem;
+    color: var(--dg-accent, #89b4fa);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.pivot2-chevron.pivot2-expanded {
+    transform: rotate(90deg);
+}
+
+.pivot2-chevron.pivot2-collapsed {
+    transform: rotate(0deg);
+}
+
+.pivot2-leaf-icon {
+    display: inline-block;
+    width: 1em;
+    flex-shrink: 0;
+}
+
+/* Numeric cells */
+.pivot2-table td.col-num {
+    text-align: right;
+    padding: 0.4rem 0.75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Grand total footer */
+.pivot2-grand-total-row {
+    font-weight: 700;
+    background: var(--dg-surface-alt, #2a2a3e);
+    border-top: 2px solid var(--dg-accent, #89b4fa);
+}
+
+.pivot2-footer-label {
+    padding: 0.5rem 0.75rem;
+    font-style: italic;
+}
+
+.pivot2-grand-total {
+    color: var(--dg-accent, #89b4fa);
+}
+
+/* Label header */
+.pivot2-label-header {
+    min-width: 200px;
+}
