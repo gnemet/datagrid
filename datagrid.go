@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"regexp"
@@ -413,7 +413,7 @@ func NewHandlerFromDataWithUser(db *sql.DB, data []byte, lang string, currentUse
 					}
 				}
 			} else {
-				log.Printf("RLS LOV query error for param %s: %v", h.QueryParams[i].Name, err)
+				slog.Error("RLS LOV query error for param", "name", h.QueryParams[i].Name, "error", err)
 			}
 		}
 	}
@@ -729,7 +729,7 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 						}
 					}
 				} else {
-					log.Printf("LOV query error for param %s: %v", params[i].Name, err)
+					slog.Error("LOV query error for param", "name", params[i].Name, "error", err)
 				}
 			}
 
@@ -1039,12 +1039,12 @@ func (h *Handler) ExecuteQuery(w http.ResponseWriter, r *http.Request) {
 	sqlQuery = strings.ReplaceAll(sqlQuery, castPlaceholder, "::")
 
 	if os.Getenv("DEBUG_SQL") == "true" {
-		log.Printf("Query Execute SQL:\n%s", sqlQuery)
+		slog.Info("Query Execute SQL:\n", "sql_query", sqlQuery)
 	}
 
 	rows, err := h.DB.Query(sqlQuery)
 	if err != nil {
-		log.Printf("Query execution error: %v", err)
+		slog.Error("Query execution error", "error", err)
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprintf(w, `<div class="dg-query-error"><i class="fas fa-exclamation-triangle"></i> <strong>Query Error:</strong> %s</div>`, template.HTMLEscapeString(err.Error()))
 		return
@@ -1182,7 +1182,7 @@ func (h *Handler) ExecuteQuery(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `<div class="dg-query-row-count"><i class="fas fa-database"></i> %d rows</div>`, len(records))
 	err = tmpl.ExecuteTemplate(w, "datagrid_table", res)
 	if err != nil {
-		log.Printf("Template execution error: %v", err)
+		slog.Error("Template execution error", "error", err)
 	}
 }
 

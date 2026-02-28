@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -103,7 +103,7 @@ func (p *CursorPool) cleanupTimeouts() {
 	for sid, state := range p.cursors {
 		state.Lock()
 		if now.Sub(state.CreatedAt) > p.absTimeout || now.Sub(state.LastUsed) > p.idleTimeout {
-			log.Printf("Cleaning up expired cursor: %s", state.CursorName)
+			slog.Info("Cleaning up expired cursor", "cursorname", state.CursorName)
 			p.removeCursor(sid, state)
 		}
 		state.Unlock()

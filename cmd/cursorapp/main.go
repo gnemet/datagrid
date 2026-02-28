@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -71,7 +71,8 @@ var (
 func main() {
 	cfg, err := loadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		slog.Error("Failed to load config", "error", err)
+		os.Exit(1)
 	}
 
 	var dbCfg struct {
@@ -92,7 +93,8 @@ func main() {
 	// Standard DB for non-cursor operations if needed
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("Fatal error", "error", err)
+		os.Exit(1)
 	}
 
 	// Initialize CursorPool
@@ -111,7 +113,8 @@ func main() {
 
 	pool, err = cursorpool.NewCursorPool(connStr, maxConns, idleTimeout, absTimeout)
 	if err != nil {
-		log.Fatalf("Failed to initialize CursorPool: %v", err)
+		slog.Error("Failed to initialize CursorPool", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
@@ -122,7 +125,8 @@ func main() {
 	}
 	handler, err = datagrid.NewHandlerFromCatalog(db, catPath, "en")
 	if err != nil {
-		log.Fatalf("Failed to initialize datagrid handler: %v", err)
+		slog.Error("Failed to initialize datagrid handler", "error", err)
+		os.Exit(1)
 	}
 
 	// Load templates
@@ -240,5 +244,8 @@ func main() {
 	})
 
 	fmt.Printf("CursorApp starting at http://localhost:%s\n", cfg.Server.Port)
-	log.Fatal(http.ListenAndServe(":"+cfg.Server.Port, nil))
+	if err := http.ListenAndServe(":"+cfg.Server.Port, nil); err != nil {
+		slog.Error("Server error", "error", err)
+		os.Exit(1)
+	}
 }

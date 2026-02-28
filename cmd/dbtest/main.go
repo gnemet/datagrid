@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -59,10 +59,12 @@ func main() {
 	// Load Catalog
 	catData, err := os.ReadFile("catalog/personnel.json")
 	if err != nil {
-		log.Fatalf("Failed to read catalog: %v", err)
+		slog.Error("Failed to read catalog", "error", err)
+		os.Exit(1)
 	}
 	if err := json.Unmarshal(catData, &catalog); err != nil {
-		log.Fatalf("Failed to unmarshal catalog: %v", err)
+		slog.Error("Failed to unmarshal catalog", "error", err)
+		os.Exit(1)
 	}
 
 	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable search_path=datagrid,public",
@@ -70,7 +72,8 @@ func main() {
 
 	pool, err = cursorpool.NewCursorPool(connStr, 10, 5*time.Minute, 1*time.Hour)
 	if err != nil {
-		log.Fatalf("Failed to create pool: %v", err)
+		slog.Error("Failed to create pool", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
@@ -173,5 +176,8 @@ func main() {
 		port = "8090"
 	}
 	fmt.Printf("Catalog UI Test Server starting at http://localhost:%s\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		slog.Error("Server error", "error", err)
+		os.Exit(1)
+	}
 }

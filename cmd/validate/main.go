@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -17,7 +17,8 @@ func main() {
 
 	schemaPath, err := filepath.Abs(os.Args[1])
 	if err != nil {
-		log.Fatalf("Invalid schema path: %v", err)
+		slog.Error("Invalid schema path", "error", err)
+		os.Exit(1)
 	}
 	schemaLoader := gojsonschema.NewReferenceLoader("file://" + schemaPath)
 

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"html/template"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -72,7 +72,8 @@ var (
 func main() {
 	cfg, err := loadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		slog.Error("Failed to load config", "error", err)
+		os.Exit(1)
 	}
 
 	var dbCfg struct {
@@ -96,7 +97,8 @@ func main() {
 
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("Fatal error", "error", err)
+		os.Exit(1)
 	}
 
 	// Load templates with helper functions
@@ -188,7 +190,7 @@ func main() {
 		catPath := fmt.Sprintf("internal/data/catalog/%s.json", catParam)
 		gridHandler, err := datagrid.NewHandlerFromCatalog(db, catPath, "en")
 		if err != nil {
-			log.Printf("Error loading catalog %s: %v", catParam, err)
+			slog.Error("Error loading catalog", "cat_param", catParam, "error", err)
 			http.Error(w, fmt.Sprintf("Error loading catalog: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -214,7 +216,7 @@ func main() {
 		catPath := fmt.Sprintf("internal/data/catalog/%s.json", catParam)
 		gridHandler, err := datagrid.NewHandlerFromCatalog(db, catPath, "en")
 		if err != nil {
-			log.Printf("Error loading catalog %s: %v", catParam, err)
+			slog.Error("Error loading catalog", "cat_param", catParam, "error", err)
 			http.Error(w, fmt.Sprintf("Error loading catalog: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -240,7 +242,7 @@ func main() {
 		catPath := fmt.Sprintf("internal/data/catalog/%s.json", catParam)
 		gridHandler, err := datagrid.NewHandlerFromCatalog(db, catPath, "en")
 		if err != nil {
-			log.Printf("Error loading catalog %s: %v", catParam, err)
+			slog.Error("Error loading catalog", "cat_param", catParam, "error", err)
 			http.Error(w, fmt.Sprintf("Error loading catalog: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -252,5 +254,8 @@ func main() {
 	})
 
 	fmt.Printf("Server starting at http://localhost:%s\n", cfg.Server.Port)
-	log.Fatal(http.ListenAndServe(":"+cfg.Server.Port, nil))
+	if err := http.ListenAndServe(":"+cfg.Server.Port, nil); err != nil {
+		slog.Error("Server error", "error", err)
+		os.Exit(1)
+	}
 }

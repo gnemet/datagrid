@@ -46,6 +46,9 @@ The project standardizes on a **Unified Hybrid SQL** model. SQL is generated via
 ### RLS-Aware Initialization
 The datagrid includes context-aware session injection. By using `NewHandlerFromDataWithUser()`, the datagrid injects the current authenticated user identity into PostgreSQL prior to executing queries or resolving dynamic SQL LOVs. This ensures full compliance with Row Level Security (RLS) policies defined in the database.
 
+### Logging
+All Go code uses `log/slog` for structured logging (`slog.Info`, `slog.Warn`, `slog.Error` with key-value pairs). The legacy `log.Printf` package is not used.
+
 ### 1. Normal (Connectless) Mode
 The stateless connection method, ideal for scalable APIs.
 - **Mechanism**: Direct execution of generated SQL using `$1` (JSONB configuration) and `$2` (Parameters).
