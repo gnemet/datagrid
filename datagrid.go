@@ -127,6 +127,7 @@ type PivotValueConfig struct {
 	ShowAt   []int          `json:"show_at,omitempty" yaml:"show_at"`      // If set, only show value at these depth levels
 	Expr     string         `json:"expr,omitempty" yaml:"expr"`            // Computed: arithmetic on other measure labels (e.g., "Belső óra - Ügyfél óra")
 	Format   string         `json:"format,omitempty" yaml:"format"`        // Printf format (e.g., "%.0f%%")
+	Total    string         `json:"total,omitempty" yaml:"total"`          // Grand total mode: sum (default), avg, min, max, count
 	CSSRules []PivotCSSRule `json:"css_rules,omitempty" yaml:"css_rules"`  // Conditional CSS classes
 }
 

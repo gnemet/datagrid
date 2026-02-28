@@ -3,7 +3,9 @@
     /* Pivot2 — Hierarchical Tree Grid Styles (Inlined) */
     .datagrid-pivot2-container {
         width: 100%;
-        overflow-x: auto;
+        overflow: auto;
+        max-height: calc(100vh - 200px);
+        position: relative;
     }
 
     .pivot2-toolbar {
@@ -13,6 +15,9 @@
         padding: 0.5rem 0.75rem;
         background: var(--dg-surface, #1e1e2e);
         border-bottom: 1px solid var(--dg-border, #333);
+        position: sticky;
+        top: 0;
+        z-index: 3;
     }
 
     .pivot2-btn {
@@ -190,18 +195,63 @@
     }
 
     .pivot2-warn {
-        color: #fab387;
+        color: var(--dg-warn, #fab387);
         background: rgba(250, 179, 135, 0.08);
     }
 
     .pivot2-danger {
-        color: #f38ba8;
+        color: var(--dg-danger, #f38ba8);
         background: rgba(243, 139, 168, 0.1);
         font-weight: 700;
     }
 
     .pivot2-ok {
-        color: #a6e3a1;
+        color: var(--dg-ok, #a6e3a1);
+    }
+
+    /* Column autocomplete */
+    .pivot2-search-wrap {
+        position: relative;
+        flex: 1;
+    }
+
+    .pivot2-col-suggest {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        background: var(--dg-surface, #1e1e2e);
+        border: 1px solid var(--dg-border, #444);
+        border-radius: 4px;
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        margin-top: 2px;
+    }
+
+    .pivot2-col-suggest.active {
+        display: block;
+    }
+
+    .pivot2-col-suggest-item {
+        padding: 0.35rem 0.75rem;
+        cursor: pointer;
+        font-size: 0.8rem;
+        color: var(--dg-text, #cdd6f4);
+        transition: background 0.1s;
+    }
+
+    .pivot2-col-suggest-item:hover,
+    .pivot2-col-suggest-item.selected {
+        background: var(--dg-hover, rgba(137,180,250,0.12));
+    }
+
+    .pivot2-col-suggest-item .col-type {
+        float: right;
+        font-size: 0.7rem;
+        color: var(--dg-text-muted, #888);
     }
 </style>
 
@@ -224,9 +274,12 @@
         <button class="pivot2-btn" onclick="Pivot2.exportCSV()" title="Export CSV">
             <i class="fas fa-download"></i> <span>Export</span>
         </button>
-        <input type="search" class="pivot2-search" name="q"
-            placeholder="🔍 text  |  {col} > 10  |  {col} IN (a,b)  |  LIKE" oninput="Pivot2.localFilter(this.value)"
-            autocomplete="off" />
+        <div class="pivot2-search-wrap">
+            <input type="search" class="pivot2-search" name="q"
+                placeholder="🔍 text  |  {col} > 10  |  {col} IN (a,b)  |  LIKE" oninput="Pivot2.localFilter(this.value)"
+                autocomplete="off" />
+            <div class="pivot2-col-suggest" id="pivot2-col-suggest"></div>
+        </div>
         <span class="pivot2-count">{{ $res.TotalCount }} records</span>
     </div>
 
@@ -447,10 +500,118 @@
                         }
                     }
                 });
+            },
+
+            // ── Column autocomplete ──
+            _colNames: null,
+            _suggestIdx: -1,
+
+            initAutocomplete: function () {
+                var self = this;
+                var input = document.querySelector('.pivot2-search');
+                var box = document.getElementById('pivot2-col-suggest');
+                if (!input || !box) return;
+
+                self._colNames = [];
+                var w = document.getElementById('dg-pivot2-wrapper');
+                if (w) {
+                    var ths = w.querySelectorAll('table thead th');
+                    var firstRow = w.querySelector('table tbody tr.pivot2-row');
+                    var firstCells = firstRow ? firstRow.querySelectorAll('td') : [];
+                    ths.forEach(function (th, idx) {
+                        var name = th.textContent.trim();
+                        if (!name) return;
+                        var type = 'text';
+                        if (idx > 0 && firstCells[idx]) {
+                            var val = firstCells[idx].textContent.trim().replace(/[,\s]/g, '');
+                            if (val && !isNaN(parseFloat(val))) type = 'num';
+                        }
+                        self._colNames.push({ name: name, type: type });
+                    });
+                }
+
+                input.addEventListener('keydown', function (e) {
+                    if (!box.classList.contains('active')) return;
+                    var items = box.querySelectorAll('.pivot2-col-suggest-item');
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        self._suggestIdx = Math.min(self._suggestIdx + 1, items.length - 1);
+                        self._hlSuggest(items);
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        self._suggestIdx = Math.max(self._suggestIdx - 1, 0);
+                        self._hlSuggest(items);
+                    } else if (e.key === 'Enter' && self._suggestIdx >= 0) {
+                        e.preventDefault();
+                        self._pickSuggest(input, items[self._suggestIdx].dataset.col);
+                    } else if (e.key === 'Escape') {
+                        box.classList.remove('active');
+                    }
+                });
+
+                input.addEventListener('input', function () {
+                    self._updateSuggest(input, box);
+                });
+
+                document.addEventListener('click', function (e) {
+                    if (!e.target.closest('.pivot2-search-wrap')) box.classList.remove('active');
+                });
+            },
+
+            _updateSuggest: function (input, box) {
+                var val = input.value;
+                var cur = input.selectionStart;
+                var before = val.substring(0, cur);
+                var lastOpen = before.lastIndexOf('{');
+                var lastClose = before.lastIndexOf('}');
+                if (lastOpen === -1 || lastClose > lastOpen) { box.classList.remove('active'); return; }
+
+                var partial = before.substring(lastOpen + 1).toLowerCase();
+                var filtered = this._colNames.filter(function (c) {
+                    return c.name.toLowerCase().indexOf(partial) !== -1;
+                });
+                if (!filtered.length) { box.classList.remove('active'); return; }
+
+                this._suggestIdx = 0;
+                box.innerHTML = '';
+                var self = this;
+                filtered.forEach(function (c, i) {
+                    var div = document.createElement('div');
+                    div.className = 'pivot2-col-suggest-item' + (i === 0 ? ' selected' : '');
+                    div.dataset.col = c.name;
+                    div.innerHTML = c.name + '<span class="col-type">' + c.type + '</span>';
+                    div.addEventListener('mousedown', function (e) {
+                        e.preventDefault();
+                        self._pickSuggest(input, c.name);
+                    });
+                    box.appendChild(div);
+                });
+                box.classList.add('active');
+            },
+
+            _hlSuggest: function (items) {
+                var idx = this._suggestIdx;
+                items.forEach(function (it, i) { it.classList.toggle('selected', i === idx); });
+                if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
+            },
+
+            _pickSuggest: function (input, colName) {
+                var val = input.value;
+                var cur = input.selectionStart;
+                var before = val.substring(0, cur);
+                var after = val.substring(cur);
+                var lastOpen = before.lastIndexOf('{');
+                var newBefore = before.substring(0, lastOpen) + '{' + colName + '} ';
+                input.value = newBefore + after;
+                input.selectionStart = input.selectionEnd = newBefore.length;
+                var box = document.getElementById('pivot2-col-suggest');
+                if (box) box.classList.remove('active');
+                input.focus();
             }
         };
         window.Pivot2 = Pivot2;
+        Pivot2.initAutocomplete();
     })();
 </script>
-<script src="/static/js/pivot2-chart.js"></script>
+<script src="/ui/static/js/pivot2-chart.js"></script>
 {{end}}

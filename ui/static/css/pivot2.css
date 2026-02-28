@@ -4,7 +4,9 @@
 
 .datagrid-pivot2-container {
     width: 100%;
-    overflow-x: auto;
+    overflow: auto;
+    max-height: calc(100vh - 200px);
+    position: relative;
 }
 
 /* Toolbar */
@@ -15,6 +17,9 @@
     padding: 0.5rem 0.75rem;
     background: var(--dg-surface, #1e1e2e);
     border-bottom: 1px solid var(--dg-border, #333);
+    position: sticky;
+    top: 0;
+    z-index: 3;
 }
 
 .pivot2-btn {

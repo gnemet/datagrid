@@ -78,17 +78,58 @@ func Pivot2Data(records []map[string]interface{}, cfg *Pivot2Config) *Pivot2Resu
 	grandTotal := make(map[string]float64)
 	formattedGrandTotal := make(map[string]string)
 
+	// Collect per-row expr values for total:avg/min/max
+	exprRowValues := make(map[string][]float64)
+
 	for _, row := range tree {
 		for i, vc := range cfg.Values {
+			mKey := measures[i]
 			if vc.Expr == "" {
-				grandTotal[measures[i]] += row.Values[measures[i]]
+				grandTotal[mKey] += row.Values[mKey]
+			} else {
+				exprRowValues[mKey] = append(exprRowValues[mKey], row.Values[mKey])
 			}
 		}
 	}
 	for i, vc := range cfg.Values {
 		mKey := measures[i]
 		if vc.Expr != "" {
-			grandTotal[mKey] = evaluateExpr(vc.Expr, grandTotal)
+			totalMode := strings.ToLower(strings.TrimSpace(vc.Total))
+			vals := exprRowValues[mKey]
+			switch totalMode {
+			case "avg":
+				if len(vals) > 0 {
+					var s float64
+					for _, v := range vals {
+						s += v
+					}
+					grandTotal[mKey] = s / float64(len(vals))
+				}
+			case "min":
+				if len(vals) > 0 {
+					m := vals[0]
+					for _, v := range vals[1:] {
+						if v < m {
+							m = v
+						}
+					}
+					grandTotal[mKey] = m
+				}
+			case "max":
+				if len(vals) > 0 {
+					m := vals[0]
+					for _, v := range vals[1:] {
+						if v > m {
+							m = v
+						}
+					}
+					grandTotal[mKey] = m
+				}
+			case "count":
+				grandTotal[mKey] = float64(len(vals))
+			default: // sum or unset: compute expr from summed values (original behavior)
+				grandTotal[mKey] = evaluateExpr(vc.Expr, grandTotal)
+			}
 		}
 		if vc.Format != "" {
 			formattedGrandTotal[mKey] = fmt.Sprintf(vc.Format, grandTotal[mKey])
@@ -325,7 +366,8 @@ func intSliceContains(slice []int, val int) bool {
 
 // evaluateExpr evaluates a simple arithmetic expression referencing measure labels.
 // Example: "Belső óra - Ügyfél óra" → row.Values["Belső óra"] - row.Values["Ügyfél óra"]
-// Supports: +, -, *, / operators. Measure labels are matched greedily.
+// Supports: +, -, *, / operators and ternary: "A > B ? X : Y".
+// Measure labels are matched greedily.
 func evaluateExpr(expr string, values map[string]float64) float64 {
 	// Tokenize: replace known measure labels with their values, then evaluate
 	// Strategy: sort labels by length (longest first) to avoid partial matches
@@ -350,10 +392,52 @@ func evaluateExpr(expr string, values map[string]float64) float64 {
 		placeholderVals[ph] = lv.val
 	}
 
+	// Check for ternary: "condition ? trueExpr : falseExpr"
+	if qIdx := strings.Index(work, "?"); qIdx > 0 {
+		condPart := strings.TrimSpace(work[:qIdx])
+		rest := work[qIdx+1:]
+		if cIdx := strings.Index(rest, ":"); cIdx >= 0 {
+			truePart := strings.TrimSpace(rest[:cIdx])
+			falsePart := strings.TrimSpace(rest[cIdx+1:])
+			if evalCondition(condPart, placeholderVals) {
+				tokens := tokenizeExpr(truePart, placeholderVals)
+				return evalTokens(tokens)
+			}
+			tokens := tokenizeExpr(falsePart, placeholderVals)
+			return evalTokens(tokens)
+		}
+	}
+
 	// Now parse the expression: split by operators, evaluate left to right
 	// Tokenize into numbers and operators
 	tokens := tokenizeExpr(work, placeholderVals)
 	return evalTokens(tokens)
+}
+
+// evalCondition evaluates a simple comparison: "A > B", "A < B", "A >= B", "A <= B", "A = B"
+func evalCondition(cond string, placeholders map[string]float64) bool {
+	for _, op := range []string{">=", "<=", ">", "<", "="} {
+		if idx := strings.Index(cond, op); idx >= 0 {
+			lhs := strings.TrimSpace(cond[:idx])
+			rhs := strings.TrimSpace(cond[idx+len(op):])
+			lVal := evalTokens(tokenizeExpr(lhs, placeholders))
+			rVal := evalTokens(tokenizeExpr(rhs, placeholders))
+			switch op {
+			case ">":
+				return lVal > rVal
+			case "<":
+				return lVal < rVal
+			case ">=":
+				return lVal >= rVal
+			case "<=":
+				return lVal <= rVal
+			case "=":
+				return lVal == rVal
+			}
+		}
+	}
+	// Fallback: truthy if value != 0
+	return evalTokens(tokenizeExpr(cond, placeholders)) != 0
 }
 
 type exprToken struct {
