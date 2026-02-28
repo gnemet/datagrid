@@ -1,0 +1,93 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Datagrid JSON Catalog Schema",
+    "description": "Validation for the datagrid catalog format (v2.0)",
+    "type": "object",
+    "required": [
+        "version",
+        "source",
+        "datagrid"
+    ],
+    "properties": {
+        "version": {
+            "$ref": "common.schema.json#/definitions/version"
+        },
+        "title": {
+            "type": "string"
+        },
+        "icon": {
+            "type": "string"
+        },
+        "source": {
+            "type": "string",
+            "description": "Table name, e.g. dwh.dim_issue"
+        },
+        "description": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "datagrid": {
+            "type": "object",
+            "properties": {
+                "defaults": {
+                    "type": "object"
+                },
+                "columns": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                            "type",
+                            "visible",
+                            "labels"
+                        ],
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            },
+                            "visible": {
+                                "type": "boolean"
+                            },
+                            "labels": {
+                                "$ref": "common.schema.json#/definitions/multi_lang_label"
+                            },
+                            "css": {
+                                "type": "string"
+                            },
+                            "display": {
+                                "type": "string"
+                            },
+                            "icon": {
+                                "type": "string"
+                            },
+                            "lov": {}
+                        }
+                    }
+                },
+                "lovs": {
+                    "type": "object"
+                },
+                "filters": {
+                    "type": "object"
+                },
+                "searchable": {
+                    "type": "object"
+                },
+                "pivot": {
+                    "type": "object"
+                },
+                "pivot2": {
+                    "type": "object"
+                }
+            }
+        },
+        "parameters": {
+            "type": "array"
+        },
+        "sql": {
+            "type": "string"
+        }
+    }
+}

@@ -51,15 +51,17 @@ type LOVItem struct {
 
 // Catalog structures for MIGR/JiraMntr compatibility
 type Catalog struct {
-	Version    string         `json:"version"`
-	Title      string         `json:"title,omitempty"`
-	Icon       string         `json:"icon,omitempty"`
-	Type       string         `json:"type,omitempty"`
-	CSSClass   string         `json:"css_class,omitempty"`
-	Datagrid   DatagridConfig `json:"datagrid,omitempty"`
-	Objects    []ObjectDef    `json:"objects"`
-	Parameters []QueryParam   `json:"parameters,omitempty"`
-	SQL        string         `json:"sql,omitempty"`
+	Version     string         `json:"version"`
+	Title       string         `json:"title,omitempty"`
+	Icon        string         `json:"icon,omitempty"`
+	Type        string         `json:"type,omitempty"`
+	CSSClass    string         `json:"css_class,omitempty"`
+	Source      string         `json:"source,omitempty"`      // v2.0: table name (e.g. "dwh.dim_issue")
+	Description string         `json:"description,omitempty"` // v2.0: table description
+	Datagrid    DatagridConfig `json:"datagrid,omitempty"`
+	Objects     []ObjectDef    `json:"objects,omitempty"`
+	Parameters  []QueryParam   `json:"parameters,omitempty"`
+	SQL         string         `json:"sql,omitempty"`
 }
 
 type DatagridConfig struct {
@@ -123,12 +125,12 @@ func (pc *PivotConfig) GetColColumns() []string {
 type PivotValueConfig struct {
 	Column   string         `json:"column" yaml:"column"`
 	Func     string         `json:"func" yaml:"func"`                     // SUM, AVG, etc.
-	Label    string         `json:"label,omitempty" yaml:"label"`          // Custom label for header
-	ShowAt   []int          `json:"show_at,omitempty" yaml:"show_at"`      // If set, only show value at these depth levels
-	Expr     string         `json:"expr,omitempty" yaml:"expr"`            // Computed: arithmetic on other measure labels (e.g., "Belső óra - Ügyfél óra")
-	Format   string         `json:"format,omitempty" yaml:"format"`        // Printf format (e.g., "%.0f%%")
-	Total    string         `json:"total,omitempty" yaml:"total"`          // Grand total mode: sum (default), avg, min, max, count
-	CSSRules []PivotCSSRule `json:"css_rules,omitempty" yaml:"css_rules"`  // Conditional CSS classes
+	Label    string         `json:"label,omitempty" yaml:"label"`         // Custom label for header
+	ShowAt   []int          `json:"show_at,omitempty" yaml:"show_at"`     // If set, only show value at these depth levels
+	Expr     string         `json:"expr,omitempty" yaml:"expr"`           // Computed: arithmetic on other measure labels (e.g., "Belső óra - Ügyfél óra")
+	Format   string         `json:"format,omitempty" yaml:"format"`       // Printf format (e.g., "%.0f%%")
+	Total    string         `json:"total,omitempty" yaml:"total"`         // Grand total mode: sum (default), avg, min, max, count
+	CSSRules []PivotCSSRule `json:"css_rules,omitempty" yaml:"css_rules"` // Conditional CSS classes
 }
 
 // PivotCSSRule applies a CSS class when a measure value matches a condition.
@@ -167,18 +169,18 @@ type FilterDef struct {
 // QueryParam describes a query parameter from the catalog JSON.
 type QueryParam struct {
 	Name            string    `json:"name"`
-	Type            string    `json:"type"`                       // DATE, TEXT, INTEGER, NUMERIC, TEXT[]
-	Default         string    `json:"default"`                    // CURRENT_DATE, NULL, or literal
-	Input           string    `json:"input"`                      // date, number, text, select, lov, lov-tree, lov-grouped, constant
+	Type            string    `json:"type"`    // DATE, TEXT, INTEGER, NUMERIC, TEXT[]
+	Default         string    `json:"default"` // CURRENT_DATE, NULL, or literal
+	Input           string    `json:"input"`   // date, number, text, select, lov, lov-tree, lov-grouped, constant
 	Description     string    `json:"description"`
-	Label           string    `json:"label,omitempty"`            // Display label (auto-generated from name if empty)
-	LOVQuery        string    `json:"lov_query,omitempty"`        // SQL query for lov/lov-tree/lov-grouped options
-	LOVName         string    `json:"lov_name,omitempty"`         // Named LOV function (e.g. "lov_department" → SELECT code, name FROM dwh.lov_department())
-	SelectOptions   string    `json:"select_options,omitempty"`   // Comma-separated options for select type (alternative to select:a,b,c)
-	Constant        string    `json:"constant,omitempty"`         // Constant key (e.g. "current_user") — alternative to constant:key
-	Options         []LOVItem `json:"options,omitempty"`          // Resolved at load time for select/lov
-	ResolvedDefault string    `json:"-"`                         // Resolved default for HTML inputs
-	IsArray         bool      `json:"isArray,omitempty"`          // True for array types (TEXT[], INTEGER[]) → renders multi-select
+	Label           string    `json:"label,omitempty"`          // Display label (auto-generated from name if empty)
+	LOVQuery        string    `json:"lov_query,omitempty"`      // SQL query for lov/lov-tree/lov-grouped options
+	LOVName         string    `json:"lov_name,omitempty"`       // Named LOV function (e.g. "lov_department" → SELECT code, name FROM dwh.lov_department())
+	SelectOptions   string    `json:"select_options,omitempty"` // Comma-separated options for select type (alternative to select:a,b,c)
+	Constant        string    `json:"constant,omitempty"`       // Constant key (e.g. "current_user") — alternative to constant:key
+	Options         []LOVItem `json:"options,omitempty"`        // Resolved at load time for select/lov
+	ResolvedDefault string    `json:"-"`                        // Resolved default for HTML inputs
+	IsArray         bool      `json:"isArray,omitempty"`        // True for array types (TEXT[], INTEGER[]) → renders multi-select
 }
 
 // InputType returns the HTML input type for the parameter.
@@ -268,6 +270,7 @@ func (p QueryParam) DisplayLabel() string {
 }
 
 type DatagridColumnDef struct {
+	Type    string            `json:"type,omitempty"` // v2.0: column type (e.g. "TEXT", "BIGINT")
 	Visible *bool             `json:"visible,omitempty"`
 	CSS     string            `json:"css,omitempty"`
 	Display string            `json:"display,omitempty"`
@@ -323,9 +326,9 @@ type TableResult struct {
 	App                 struct {
 		Name string
 	}
-	Catalogs    map[string]string
-	LangsJSON   string
-	CurrentLang string
+	Catalogs        map[string]string
+	LangsJSON       string
+	CurrentLang     string
 	QueryParams     []QueryParam
 	IsQueryMode     bool
 	ExecuteEndpoint string
@@ -431,6 +434,22 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 	// Populate PageSize helper for templates
 	if len(cat.Datagrid.Defaults.PageSizes) > 0 {
 		cat.Datagrid.Defaults.PageSize = cat.Datagrid.Defaults.PageSizes[0]
+	}
+
+	// v2.0: build objects from datagrid.columns + source when objects[] is absent
+	if len(cat.Objects) == 0 && cat.Source != "" {
+		var cols []ColumnDef
+		for name, def := range cat.Datagrid.Columns {
+			cols = append(cols, ColumnDef{
+				Name:   name,
+				Type:   def.Type,
+				Labels: def.Labels,
+			})
+		}
+		cat.Objects = []ObjectDef{{
+			Name:    cat.Source,
+			Columns: cols,
+		}}
 	}
 
 	if len(cat.Objects) == 0 {
@@ -634,8 +653,6 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 				cssClass = "col-id"
 			}
 		}
-
-
 
 		uiCols = append(uiCols, UIColumn{
 			Field:    col.Name,
@@ -1750,8 +1767,8 @@ func TemplateFuncs() template.FuncMap {
 			}
 		},
 		// Query parameter helpers
-		"inputType": func(p QueryParam) string { return p.InputType() },
-		"constantKey": func(p QueryParam) string { return p.ConstantKey() },
+		"inputType":    func(p QueryParam) string { return p.InputType() },
+		"constantKey":  func(p QueryParam) string { return p.ConstantKey() },
 		"displayLabel": func(p QueryParam) string { return p.DisplayLabel() },
 
 		// lov-tree: indent label by depth
