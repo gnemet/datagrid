@@ -227,7 +227,7 @@
         border: 1px solid var(--dg-border, #444);
         border-radius: 4px;
         z-index: 10;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         margin-top: 2px;
     }
 
@@ -245,7 +245,7 @@
 
     .pivot2-col-suggest-item:hover,
     .pivot2-col-suggest-item.selected {
-        background: var(--dg-hover, rgba(137,180,250,0.12));
+        background: var(--dg-hover, rgba(137, 180, 250, 0.12));
     }
 
     .pivot2-col-suggest-item .col-type {
@@ -255,7 +255,7 @@
     }
 </style>
 
-<div class="datagrid-pivot2-container" id="dg-pivot2-wrapper">
+<div class="datagrid-pivot2-container" id="dg-pivot2-wrapper" data-default-open="{{ .Pivot2Result.DefaultOpen }}">
     {{ $res := .Pivot2Result }}
     {{ $measures := $res.Measures }}
     {{ $numMeasures := len $measures }}
@@ -276,8 +276,8 @@
         </button>
         <div class="pivot2-search-wrap">
             <input type="search" class="pivot2-search" name="q"
-                placeholder="🔍 text  |  {col} > 10  |  {col} IN (a,b)  |  LIKE" oninput="Pivot2.localFilter(this.value)"
-                autocomplete="off" />
+                placeholder="🔍 text  |  {col} > 10  |  {col} IN (a,b)  |  LIKE"
+                oninput="Pivot2.localFilter(this.value)" autocomplete="off" />
             <div class="pivot2-col-suggest" id="pivot2-col-suggest"></div>
         </div>
         <span class="pivot2-count">{{ $res.TotalCount }} records</span>
@@ -300,12 +300,21 @@
         </thead>
         <tbody>
             {{ range $row := $flatRows }}
-            <tr class="pivot2-row pivot2-depth-{{ $row.Depth }}{{ if not $row.IsLeaf }} pivot2-group{{ else }} pivot2-leaf{{ end }}{{ if gt $row.Depth 0 }} pivot2-hidden{{ end }}"
+            {{/* Check if row should be hidden based on DefaultOpen. Root depth is 0.
+            If DefaultOpen is 0, hide depth >= 1.
+            If DefaultOpen is 2, hide depth >= 3. */}}
+            {{ $isHidden := false }}
+            {{ if gt $row.Depth $res.DefaultOpen }}
+            {{ $isHidden = true }}
+            {{ end }}
+            <tr class="pivot2-row pivot2-depth-{{ $row.Depth }}{{ if not $row.IsLeaf }} pivot2-group{{ else }} pivot2-leaf{{ end }}{{ if $isHidden }} pivot2-hidden{{ end }}"
                 data-depth="{{ $row.Depth }}" data-key="{{ $row.Key }}" {{ if not $row.IsLeaf
                 }}onclick="Pivot2.toggle(this)" {{ end }}>
                 <td class="pivot2-label" style="padding-left: calc({{ $row.Depth }} * 1.4rem + 0.5rem)">
                     {{ if not $row.IsLeaf }}
-                    <span class="pivot2-chevron">▶</span>
+                    {{/* Chevron is collapsed if its depth >= DefaultOpen */}}
+                    <span
+                        class="pivot2-chevron{{ if ge $row.Depth $res.DefaultOpen }} pivot2-collapsed{{ else }} pivot2-expanded{{ end }}">▶</span>
                     {{ else }}
                     <span class="pivot2-leaf-icon"></span>
                     {{ end }}
@@ -382,10 +391,24 @@
             collapseAll: function () {
                 var w = document.getElementById('dg-pivot2-wrapper');
                 if (!w) return;
+                var defOpen = parseInt(w.dataset.defaultOpen || "0", 10);
                 w.querySelectorAll('tr.pivot2-row').forEach(function (r) {
-                    if (parseInt(r.dataset.depth, 10) > 0) r.classList.add('pivot2-hidden');
+                    var depth = parseInt(r.dataset.depth, 10);
+                    if (depth > defOpen) {
+                        r.classList.add('pivot2-hidden');
+                    } else {
+                        r.classList.remove('pivot2-hidden');
+                    }
                     var c = r.querySelector('.pivot2-chevron');
-                    if (c) { c.classList.remove('pivot2-expanded'); c.classList.add('pivot2-collapsed'); }
+                    if (c) {
+                        if (depth >= defOpen) {
+                            c.classList.remove('pivot2-expanded');
+                            c.classList.add('pivot2-collapsed');
+                        } else {
+                            c.classList.remove('pivot2-collapsed');
+                            c.classList.add('pivot2-expanded');
+                        }
+                    }
                 });
             },
             // Smart filter: supports {column} > value, {col} < val AND {col2} >= val2, or plain text
@@ -394,17 +417,26 @@
                 if (!w) return;
                 var input = term.trim();
                 var rows = w.querySelectorAll('tr.pivot2-row');
+                var defOpen = parseInt(w.dataset.defaultOpen || "0", 10);
+
                 if (!input) {
-                    // Clear filter: show depth-0 rows, hide deeper
+                    // Clear filter: return to default open state
                     rows.forEach(function (r) {
+                        var depth = parseInt(r.dataset.depth, 10);
                         r.classList.remove('pivot2-filtered-out');
-                        if (parseInt(r.dataset.depth, 10) > 0) {
+                        if (depth > defOpen) {
                             r.classList.add('pivot2-hidden');
                         } else {
                             r.classList.remove('pivot2-hidden');
                         }
                         var c = r.querySelector('.pivot2-chevron');
-                        if (c) { c.classList.remove('pivot2-expanded'); c.classList.add('pivot2-collapsed'); }
+                        if (c) {
+                            if (depth >= defOpen) {
+                                c.classList.remove('pivot2-expanded'); c.classList.add('pivot2-collapsed');
+                            } else {
+                                c.classList.remove('pivot2-collapsed'); c.classList.add('pivot2-expanded');
+                            }
+                        }
                     });
                     return;
                 }

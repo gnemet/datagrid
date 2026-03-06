@@ -9,8 +9,9 @@ import (
 // Pivot2Config defines the hierarchical pivot configuration.
 // Unlike PivotConfig (cross-tab), Pivot2 operates row-only with collapsible tree levels.
 type Pivot2Config struct {
-	Levels []Pivot2Level      `json:"levels" yaml:"levels"` // hierarchy: e.g. project → issue → user
-	Values []PivotValueConfig `json:"values" yaml:"values"` // aggregated measures (reuse existing type)
+	Levels      []Pivot2Level      `json:"levels" yaml:"levels"`             // hierarchy: e.g. project → issue → user
+	Values      []PivotValueConfig `json:"values" yaml:"values"`             // aggregated measures (reuse existing type)
+	DefaultOpen int                `json:"default_open" yaml:"default_open"` // depth to auto-expand to (0=root only, 1=root+children)
 }
 
 // Pivot2Level defines a single hierarchy level.
@@ -28,6 +29,7 @@ type Pivot2Result struct {
 	GrandTotal          map[string]float64 // grand totals per measure
 	FormattedGrandTotal map[string]string  // custom formatted grand totals
 	TotalCount          int                // total leaf record count
+	DefaultOpen         int                // depth to auto-expand to initially
 }
 
 // Pivot2Row is a node in the hierarchical tree.
@@ -73,6 +75,9 @@ func Pivot2Data(records []map[string]interface{}, cfg *Pivot2Config) *Pivot2Resu
 
 	// Recursively group
 	tree := groupRecords(records, cfg.Levels, cfg.Values, measures, 0, "")
+
+	// Compact single-child chains (VS Code-style folder merging)
+	tree = compactSingleChildNodes(tree)
 
 	// Compute grand total
 	grandTotal := make(map[string]float64)
@@ -143,6 +148,7 @@ func Pivot2Data(records []map[string]interface{}, cfg *Pivot2Config) *Pivot2Resu
 		GrandTotal:          grandTotal,
 		FormattedGrandTotal: formattedGrandTotal,
 		TotalCount:          len(records),
+		DefaultOpen:         cfg.DefaultOpen,
 	}
 }
 
@@ -338,6 +344,59 @@ func extractFloat(rec map[string]interface{}, field string) float64 {
 		var f float64
 		fmt.Sscanf(fmt.Sprintf("%v", val), "%f", &f)
 		return f
+	}
+}
+
+// compactSingleChildNodes merges single-child chains into one row.
+// Example: TER → IIER → IIER Horizontális becomes "TER / IIER / IIER Horizontális".
+// This is the VS Code compact folder pattern.
+func compactSingleChildNodes(tree []*Pivot2Row) []*Pivot2Row {
+	for _, row := range tree {
+		// Track how many levels we merge so we can fix child depths
+		merged := 0
+		// While this node has exactly one child that is also a non-leaf group, merge them
+		for !row.IsLeaf && len(row.Children) == 1 && !row.Children[0].IsLeaf {
+			child := row.Children[0]
+			row.Label = row.Label + " / " + child.Label
+			row.Children = child.Children
+			row.Values = child.Values
+			row.FormattedVals = child.FormattedVals
+			row.HiddenMeasures = child.HiddenMeasures
+			row.CSSClasses = child.CSSClasses
+			merged++
+		}
+		// Also merge if the single child IS a leaf
+		if !row.IsLeaf && len(row.Children) == 1 && row.Children[0].IsLeaf {
+			child := row.Children[0]
+			row.Label = row.Label + " / " + child.Label
+			row.Children = nil
+			row.IsLeaf = true
+			row.Values = child.Values
+			row.FormattedVals = child.FormattedVals
+			row.HiddenMeasures = child.HiddenMeasures
+			row.CSSClasses = child.CSSClasses
+			row.Record = child.Record
+			merged++
+		}
+		// Fix depths of all descendants: they were N levels deeper, pull them up
+		if merged > 0 && row.Children != nil {
+			reDepth(row.Children, row.Depth+1)
+		}
+		// Recurse into remaining children
+		if row.Children != nil {
+			row.Children = compactSingleChildNodes(row.Children)
+		}
+	}
+	return tree
+}
+
+// reDepth recursively sets the depth of all nodes starting from targetDepth.
+func reDepth(nodes []*Pivot2Row, targetDepth int) {
+	for _, n := range nodes {
+		n.Depth = targetDepth
+		if n.Children != nil {
+			reDepth(n.Children, targetDepth+1)
+		}
 	}
 }
 
