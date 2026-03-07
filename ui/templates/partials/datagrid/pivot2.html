@@ -253,9 +253,38 @@
         font-size: 0.7rem;
         color: var(--dg-text-muted, #888);
     }
+
+    /* Drilldown icon */
+    .pivot2-drilldown-icon {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 0.5rem;
+        padding: 0.15rem 0.35rem;
+        border-radius: 3px;
+        font-size: 0.65rem;
+        color: var(--dg-accent, #89b4fa);
+        opacity: 0.4;
+        cursor: pointer;
+        transition: opacity 0.15s, background 0.15s;
+    }
+
+    .pivot2-row:hover .pivot2-drilldown-icon {
+        opacity: 1;
+    }
+
+    .pivot2-drilldown-icon:hover {
+        opacity: 1;
+        background: rgba(137, 180, 250, 0.15);
+    }
+
+    .pivot2-drilldown-active {
+        outline: 2px solid var(--dg-accent, #89b4fa);
+        outline-offset: -2px;
+    }
 </style>
 
-<div class="datagrid-pivot2-container" id="dg-pivot2-wrapper" data-default-open="{{ .Pivot2Result.DefaultOpen }}">
+<div class="datagrid-pivot2-container" id="dg-pivot2-wrapper" data-default-open="{{ .Pivot2Result.DefaultOpen }}" {{ if
+    .Pivot2Result.Drilldown }} data-drilldown='{{ toJSON .Pivot2Result.Drilldown }}' {{ end }}>
     {{ $res := .Pivot2Result }}
     {{ $measures := $res.Measures }}
     {{ $numMeasures := len $measures }}
@@ -308,9 +337,10 @@
             {{ $isHidden = true }}
             {{ end }}
             <tr class="pivot2-row pivot2-depth-{{ $row.Depth }}{{ if not $row.IsLeaf }} pivot2-group{{ else }} pivot2-leaf{{ end }}{{ if $isHidden }} pivot2-hidden{{ end }}"
-                data-depth="{{ $row.Depth }}" data-key="{{ $row.Key }}" {{ if not $row.IsLeaf
-                }}onclick="Pivot2.toggle(this)" {{ end }}>
-                <td class="pivot2-label" style="padding-left: calc({{ $row.Depth }} * 1.4rem + 0.5rem)">
+                data-depth="{{ $row.Depth }}" data-key="{{ $row.Key }}" {{ if $row.RecordFields }}
+                data-record-fields='{{ toJSON $row.RecordFields }}' {{ end }} {{ if not $row.IsLeaf
+                }}onclick="Pivot2.toggle(this)" {{ end }} style="--row-depth: {{ $row.Depth }};">
+                <td class="pivot2-label" style="padding-left: calc(var(--row-depth) * 1.4rem + 0.5rem)">
                     {{ if not $row.IsLeaf }}
                     {{/* Chevron is collapsed if its depth >= DefaultOpen */}}
                     <span
@@ -319,6 +349,13 @@
                     <span class="pivot2-leaf-icon"></span>
                     {{ end }}
                     <span class="pivot2-text">{{ $row.Label }}</span>
+                    {{ if and (eq $row.Depth 0) $res.Drilldown }}
+                    <span class="pivot2-drilldown-icon"
+                        onclick="event.stopPropagation(); Pivot2.drilldown(this.closest('tr'))"
+                        title="Open detail report">
+                        <i class="fas fa-external-link-alt"></i>
+                    </span>
+                    {{ end }}
                 </td>
                 {{ range $mKey := $measures }}
                 {{ if index $row.HiddenMeasures $mKey }}
@@ -639,6 +676,137 @@
                 var box = document.getElementById('pivot2-col-suggest');
                 if (box) box.classList.remove('active');
                 input.focus();
+            },
+
+            // ── Master→Slave Drilldown ──
+            drilldown: function (row) {
+                var w = document.getElementById('dg-pivot2-wrapper');
+                if (!w) return;
+                var cfgStr = w.dataset.drilldown;
+                if (!cfgStr) return;
+
+                var cfg;
+                try { cfg = JSON.parse(cfgStr); } catch (e) { console.error('Drilldown: invalid config', e); return; }
+
+                // Get record fields from clicked row
+                var fieldsStr = row.dataset.recordFields;
+                var fields = {};
+                if (fieldsStr) {
+                    try { fields = JSON.parse(fieldsStr); } catch (e) { /* ignore */ }
+                }
+
+                // Build URL params from dynamic base URL provided by host app
+                var params = new URLSearchParams();
+
+                var actionUrl = cfg.url || '';
+                if (!actionUrl && cfg.target) {
+                    // Fallback backward compatibility for .target
+                    actionUrl = cfg.target;
+                }
+
+                if (actionUrl && !actionUrl.startsWith('/') && !actionUrl.startsWith('http')) {
+                    // It is a relative path. Resolve it using BaseURL provided by the host.
+                    var base = cfg.base_url || window.location.pathname + window.location.search;
+                    var parts = base.split('?');
+                    var basePath = parts[0];
+                    var baseSearch = parts.length > 1 ? '?' + parts[1] : '';
+
+                    // Host-specific logic abstraction: If the host uses query params for routing
+                    // (e.g. ?name=folder/report), we append the relative target to the folder inside that param.
+                    if (baseSearch) {
+                        var baseParams = new URLSearchParams(baseSearch);
+                        var routeParam = '';
+                        var routeVal = '';
+
+                        // Guess the routing parameter (usually the first one, or 'name')
+                        if (baseParams.has('name')) { routeParam = 'name'; routeVal = baseParams.get('name'); }
+
+                        if (routeParam) {
+                            var slashIdx = routeVal.lastIndexOf('/');
+                            var folder = slashIdx >= 0 ? routeVal.substring(0, slashIdx + 1) : '';
+                            baseParams.set(routeParam, folder + actionUrl);
+                            actionUrl = basePath + '?' + baseParams.toString();
+                        } else {
+                            // Standard relative URL resolution
+                            var slashIdx = basePath.lastIndexOf('/');
+                            var folder = slashIdx >= 0 ? basePath.substring(0, slashIdx + 1) : '/';
+                            actionUrl = folder + actionUrl + baseSearch;
+                        }
+                    } else {
+                        // Standard relative URL resolution
+                        var slashIdx = basePath.lastIndexOf('/');
+                        var folder = slashIdx >= 0 ? basePath.substring(0, slashIdx + 1) : '/';
+                        actionUrl = folder + actionUrl;
+                    }
+                }
+
+                if (actionUrl) {
+                    var parts = actionUrl.split('?');
+                    actionUrl = parts[0];
+                    if (parts.length > 1) {
+                        var existingParams = new URLSearchParams(parts[1]);
+                        existingParams.forEach(function (v, k) { params.set(k, v); });
+                    }
+                }
+
+                params.set('autorun', 'true');
+
+                if (cfg.params) {
+                    for (var paramName in cfg.params) {
+                        var tmpl = cfg.params[paramName];
+                        var val = tmpl;
+
+                        // { { :master_param } } — resolve from master's form inputs
+                        var masterMatch = tmpl.match(/^\{\{:(\w+)\}\}$/);
+                        if (masterMatch) {
+                            var inputName = masterMatch[1];
+                            var el = document.querySelector('[name="' + inputName + '"]');
+                            if (el) {
+                                if (el.tomselect) {
+                                    val = el.tomselect.getValue();
+                                } else {
+                                    val = el.value;
+                                }
+                            }
+                        }
+
+                        // { { column_name } } — resolve from clicked row's record fields
+                        var colMatch = tmpl.match(/^\{\{(\w+)\}\}$/);
+                        if (colMatch && !masterMatch) {
+                            var colName = colMatch[1];
+                            val = fields[colName] || '';
+                        }
+
+                        if (Array.isArray(val)) {
+                            val.forEach(function (v) { params.append(paramName, v); });
+                        } else {
+                            params.set(paramName, val);
+                        }
+                    }
+                }
+
+                var url = actionUrl + '?' + params.toString();
+                var winName = cfg.window || cfg.url_name || (cfg.target ? cfg.target.replace(/[^a-zA-Z0-9_]/g, '_') : null);
+                if (!winName) {
+                    console.error("Pivot2 Drilldown Error: Missing 'target' or 'window' in configuration.");
+                    if (typeof showNotification === 'function') {
+                        showNotification("Drilldown error: target configuration missing.", "error");
+                    } else {
+                        alert("Drilldown error: target configuration missing.");
+                    }
+                    return;
+                }
+
+                // Highlight clicked row
+                w.querySelectorAll('tr.pivot2-row').forEach(function (r) {
+                    r.classList.remove('pivot2-drilldown-active');
+                });
+                row.classList.add('pivot2-drilldown-active');
+
+                var win = window.open(url, winName);
+                if (win) {
+                    win.focus();
+                }
             }
         };
         window.Pivot2 = Pivot2;

@@ -9,9 +9,22 @@ import (
 // Pivot2Config defines the hierarchical pivot configuration.
 // Unlike PivotConfig (cross-tab), Pivot2 operates row-only with collapsible tree levels.
 type Pivot2Config struct {
-	Levels      []Pivot2Level      `json:"levels" yaml:"levels"`             // hierarchy: e.g. project → issue → user
-	Values      []PivotValueConfig `json:"values" yaml:"values"`             // aggregated measures (reuse existing type)
-	DefaultOpen int                `json:"default_open" yaml:"default_open"` // depth to auto-expand to (0=root only, 1=root+children)
+	Levels      []Pivot2Level      `json:"levels" yaml:"levels"`                               // hierarchy: e.g. project → issue → user
+	Values      []PivotValueConfig `json:"values" yaml:"values"`                               // aggregated measures (reuse existing type)
+	DefaultOpen int                `json:"default_open" yaml:"default_open"`                   // depth to auto-expand to (0=root only, 1=root+children)
+	Drilldown   *Pivot2Drilldown   `json:"drilldown,omitempty" yaml:"drilldown,omitempty"`     // master→slave drill-down link
+	BaseURL     string             `json:"base_url" yaml:"-"`                                  // host application execution endpoint (e.g. "?name=fekegy/")
+}
+
+// Pivot2Drilldown configures the master→slave drill-down link.
+// When configured, clicking a depth-0 row opens the target report in a named browser window
+// with parameters resolved from the clicked row's record fields and the master's form inputs.
+type Pivot2Drilldown struct {
+	Target  string            `json:"target" yaml:"target"`       // report path, e.g. "fekegy/iier_ter_jira_drilldown"
+	Params  map[string]string `json:"params" yaml:"params"`       // mapping: slave_param → "{{column}}" (from record) or "{{:param}}" (from master form)
+	Window  string            `json:"window" yaml:"window"`       // named window for window.open reuse
+	URLName string            `json:"url_name" yaml:"url_name"`   // custom url_name matching the target report
+	URL     string            `json:"url" yaml:"-"`               // injected generic URL by the host application
 }
 
 // Pivot2Level defines a single hierarchy level.
@@ -30,20 +43,22 @@ type Pivot2Result struct {
 	FormattedGrandTotal map[string]string  // custom formatted grand totals
 	TotalCount          int                // total leaf record count
 	DefaultOpen         int                // depth to auto-expand to initially
+	Drilldown           *Pivot2Drilldown   // drill-down config (nil if not configured)
 }
 
 // Pivot2Row is a node in the hierarchical tree.
 type Pivot2Row struct {
-	Depth          int                // 0 = root group, 1 = sub-group, etc.
-	Label          string             // display value for this group
-	Key            string             // unique composite key for JS toggle (e.g. "0:IIER|1:IIER-123")
-	Values         map[string]float64 // aggregated measure values
-	FormattedVals  map[string]string  // custom-formatted values (for Expr measures with Format)
-	HiddenMeasures map[string]bool    // measures hidden at this depth (via ShowAt)
-	CSSClasses     map[string]string  // CSS class per measure (from css_rules)
-	Children       []*Pivot2Row       // child rows (nil for leaf)
-	IsLeaf         bool               // true for detail-level rows
+	Depth          int                    // 0 = root group, 1 = sub-group, etc.
+	Label          string                 // display value for this group
+	Key            string                 // unique composite key for JS toggle (e.g. "0:IIER|1:IIER-123")
+	Values         map[string]float64     // aggregated measure values
+	FormattedVals  map[string]string      // custom-formatted values (for Expr measures with Format)
+	HiddenMeasures map[string]bool        // measures hidden at this depth (via ShowAt)
+	CSSClasses     map[string]string      // CSS class per measure (from css_rules)
+	Children       []*Pivot2Row           // child rows (nil for leaf)
+	IsLeaf         bool                   // true for detail-level rows
 	Record         map[string]interface{} // original record (only for leaves)
+	RecordFields   map[string]string      // first record's column values (for drilldown param resolution)
 }
 
 // Pivot2Data builds a hierarchical tree from flat records.
@@ -149,6 +164,7 @@ func Pivot2Data(records []map[string]interface{}, cfg *Pivot2Config) *Pivot2Resu
 		FormattedGrandTotal: formattedGrandTotal,
 		TotalCount:          len(records),
 		DefaultOpen:         cfg.DefaultOpen,
+		Drilldown:           cfg.Drilldown,
 	}
 }
 
@@ -194,6 +210,17 @@ func groupRecords(records []map[string]interface{}, levels []Pivot2Level, values
 			Key:    rowKey,
 			Values: make(map[string]float64),
 		}
+
+		// Store first record's fields for drilldown param resolution
+		if len(groupRecs) > 0 {
+			row.RecordFields = make(map[string]string)
+			for k, v := range groupRecs[0] {
+				if v != nil {
+					row.RecordFields[k] = strings.TrimSpace(fmt.Sprintf("%v", v))
+				}
+			}
+		}
+
 
 		// Aggregate values for this group
 		row.HiddenMeasures = make(map[string]bool)

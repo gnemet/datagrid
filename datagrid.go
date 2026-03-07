@@ -1806,6 +1806,15 @@ func TemplateFuncs() template.FuncMap {
 
 		// pivot2: flatten tree for template rendering
 		"flattenTree": FlattenTree,
+
+		// toJSON serializes a value to JSON string for data attributes
+		"toJSON": func(v interface{}) string {
+			b, err := json.Marshal(v)
+			if err != nil {
+				return "{}"
+			}
+			return string(b)
+		},
 	}
 }
 
