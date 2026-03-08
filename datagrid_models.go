@@ -58,6 +58,7 @@ type DatagridConfig struct {
 	IconStyleLibrary string                       `json:"iconStyleLibrary,omitempty"`
 	Pivot            *PivotConfig                 `json:"pivot,omitempty"`
 	Pivot2           *Pivot2Config                `json:"pivot2,omitempty"`
+	Links            map[string]string            `json:"links,omitempty"`
 }
 
 type PivotConfig struct {

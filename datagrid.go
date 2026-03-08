@@ -65,6 +65,10 @@ func RenderPivot2(w io.Writer, records []map[string]interface{}, cfg *Pivot2Conf
 		Lang:         lang,
 		CurrentLang:  lang,
 	}
+	// Propagate Pivot2Config.Links so the template can resolve $.Config.Links
+	if cfg != nil && cfg.Links != nil {
+		res.Config.Links = cfg.Links
+	}
 
 	funcs := TemplateFuncs()
 	tmpl, err := template.New("pivot2_standalone").Funcs(funcs).ParseFS(UIAssets,

@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"strings"
+	"log/slog"
 	"os"
+	"strings"
 	tt "text/template"
 )
 
@@ -138,9 +139,7 @@ func (h *Handler) renderSQL(tmplName string, data interface{}) (string, error) {
 	// Automatically cast $1 to jsonb for Postgres type inference
 	result = strings.ReplaceAll(result, "$1", "$1::jsonb")
 
-	if os.Getenv("DEBUG_SQL") == "true" {
-		fmt.Printf("--- RENDERED SQL (%s) ---\n%s\n------------------------\n", tmplName, result)
-	}
+	slog.Debug("Rendered SQL template", "template", tmplName, "sql", result)
 	return result, nil
 }
 // RenderRow replaces %field% placeholders in a pattern with values from the row
@@ -162,7 +161,8 @@ func isNumericType(t string) bool {
 // BuildLink constructs a hyperlink URL based on a pattern and row data.
 // It resolves {value} to the current cell value and {column_name} to row map values.
 // If linkPattern matches a key in globalLinks, that global pattern is used instead.
-func BuildLink(linkPattern string, val interface{}, row map[string]interface{}, globalLinks map[string]string) string {
+// The row parameter accepts both map[string]interface{} and map[string]string.
+func BuildLink(linkPattern string, val interface{}, row interface{}, globalLinks map[string]string) string {
 	if linkPattern == "" {
 		return "#"
 	}
@@ -178,12 +178,20 @@ func BuildLink(linkPattern string, val interface{}, row map[string]interface{}, 
 	valStr := fmt.Sprintf("%v", val)
 	result = strings.ReplaceAll(result, "{value}", valStr)
 
-	// Replace {column_name} placeholders
-	if row != nil {
-		for k, v := range row {
+	// Replace {column_name} placeholders — support both map types
+	switch r := row.(type) {
+	case map[string]interface{}:
+		for k, v := range r {
 			placeholder := fmt.Sprintf("{%s}", k)
 			if strings.Contains(result, placeholder) {
 				result = strings.ReplaceAll(result, placeholder, fmt.Sprintf("%v", v))
+			}
+		}
+	case map[string]string:
+		for k, v := range r {
+			placeholder := fmt.Sprintf("{%s}", k)
+			if strings.Contains(result, placeholder) {
+				result = strings.ReplaceAll(result, placeholder, v)
 			}
 		}
 	}
