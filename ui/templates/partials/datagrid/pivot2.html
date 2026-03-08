@@ -358,7 +358,8 @@
                     {{ end }}
                     {{ if and (eq $row.Depth 0) $res.Drilldown }}
                     <span class="pivot2-drilldown-icon"
-                        onclick="event.stopPropagation(); Pivot2.drilldown(this.closest('tr'))"
+                        onclick="event.stopPropagation(); Pivot2.drilldown(event, this.closest('tr'))"
+                        onauxclick="event.stopPropagation(); if(event.button===1) Pivot2.drilldown(event, this.closest('tr'))"
                         title="Open detail report">
                         <i class="fas fa-external-link-alt"></i>
                     </span>
@@ -686,7 +687,7 @@
             },
 
             // ── Master→Slave Drilldown ──
-            drilldown: function (row) {
+            drilldown: function (e, row) {
                 var w = document.getElementById('dg-pivot2-wrapper');
                 if (!w) return;
                 var cfgStr = w.dataset.drilldown;
@@ -794,6 +795,12 @@
 
                 var url = actionUrl + '?' + params.toString();
                 var winName = cfg.window || cfg.url_name || (cfg.target ? cfg.target.replace(/[^a-zA-Z0-9_]/g, '_') : null);
+
+                // Allow user to force new tab/window via Ctrl+Click or Middle-Click
+                if (e && (e.ctrlKey || e.metaKey || e.button === 1)) {
+                    winName = '_blank';
+                }
+
                 if (!winName) {
                     console.error("Pivot2 Drilldown Error: Missing 'target' or 'window' in configuration.");
                     if (typeof showNotification === 'function') {
