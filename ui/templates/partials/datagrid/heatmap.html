@@ -3,19 +3,30 @@
 
 <div class="datagrid-heatmap-container" id="dg-heatmap-wrapper">
     {{ $res := .HeatmapResult }}
-    {{ $scale := $res.ColorScale }}
-    {{ $empty := $res.EmptyColor }}
 
     <div class="heatmap-toolbar">
         <span class="heatmap-info">
             <i class="fas fa-th"></i>
             <span>{{ $res.TotalRows }} × {{ $res.TotalCols }}</span>
         </span>
-        <span class="heatmap-legend">
-            <span class="heatmap-legend-label">Low</span>
-            <span class="heatmap-legend-bar" data-scale="{{ $scale }}"></span>
-            <span class="heatmap-legend-label">High</span>
-        </span>
+
+        {{/* ── Legend ── */}}
+        {{ if eq $res.ColorMode "fixed" }}
+        <div class="heatmap-legend heatmap-legend-fixed">
+            {{ range $res.LegendItems }}
+            <span class="heatmap-legend-chip">
+                <span class="heatmap-chip-color" style="background-color: {{ .Color }}"></span>
+                <span class="heatmap-chip-label">{{ .Label }}</span>
+            </span>
+            {{ end }}
+        </div>
+        {{ else }}
+        <div class="heatmap-legend heatmap-legend-dynamic">
+            <span class="heatmap-legend-label">{{ $res.LegendMinLabel }}</span>
+            <span class="heatmap-legend-bar" style="background: {{ $res.LegendGradient }}"></span>
+            <span class="heatmap-legend-label">{{ $res.LegendMaxLabel }}</span>
+        </div>
+        {{ end }}
     </div>
 
     <div class="heatmap-scroll-wrapper">
@@ -25,6 +36,9 @@
                     <th class="heatmap-row-header"></th>
                     {{ range $res.ColumnLabels }}
                     <th class="heatmap-col-header"><span>{{ . }}</span></th>
+                    {{ end }}
+                    {{ if $res.ShowTotals }}
+                    <th class="heatmap-col-header heatmap-total-header"><span>Σ</span></th>
                     {{ end }}
                 </tr>
             </thead>
@@ -39,16 +53,35 @@
                         {{ end }}
                     </td>
                     {{ range $cell := $row.Cells }}
-                    <td class="heatmap-cell{{ if not $cell.HasData }} heatmap-cell-empty{{ end }}"
-                        style="{{ heatmapCellStyle $cell $scale $empty }}" title="{{ $cell.Tooltip }}">
+                    <td class="heatmap-cell{{ if $cell.IsNull }} heatmap-cell-null{{ end }}{{ if and (not $cell.IsNull) (not $cell.HasData) }} heatmap-cell-empty{{ end }}"
+                        style="background-color: {{ $cell.CSSColor }}" {{ if $cell.Tooltip }}title="{{ $cell.Tooltip }}"
+                        {{ end }}>
                         {{ if and $res.ShowValues $cell.HasData }}
                         <span class="heatmap-val">{{ $cell.Formatted }}</span>
                         {{ end }}
                     </td>
                     {{ end }}
+                    {{ if $res.ShowTotals }}
+                    <td class="heatmap-cell heatmap-total-cell">
+                        <span class="heatmap-val heatmap-total-val">{{ $row.TotalFormatted }}</span>
+                    </td>
+                    {{ end }}
                 </tr>
                 {{ end }}
             </tbody>
+            {{ if $res.ShowTotals }}
+            <tfoot>
+                <tr class="heatmap-row heatmap-totals-row">
+                    <td class="heatmap-row-label heatmap-total-label"><span>Σ Total</span></td>
+                    {{ range $res.ColumnTotalsFmt }}
+                    <td class="heatmap-cell heatmap-total-cell">
+                        <span class="heatmap-val heatmap-total-val">{{ . }}</span>
+                    </td>
+                    {{ end }}
+                    <td class="heatmap-cell heatmap-total-cell"></td>
+                </tr>
+            </tfoot>
+            {{ end }}
         </table>
     </div>
 </div>

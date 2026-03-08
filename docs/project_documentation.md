@@ -36,6 +36,17 @@ An advanced hierarchical data tree grid for exploring nested group summaries.
 - **Conditional Formatting**: Measure-specific CSS classes applied via threshold rules (`cssRules`).
 - **Smart Filter**: Integrated client-side search supporting `{column} > value` inline syntax, exact matches, text fallback, and implicit `AND` operators across multiple space-separated terms.
 
+### 🔥 Heatmap Visualization
+A color-density grid for temporal and categorical analysis.
+- **Axes**: Rows = categories (users, projects), Columns = time periods (days, weeks).
+- **Color Modes**:
+  - `fixed` — Threshold-based using KPI palette (`rating_scale` YAML, same as KPI scorecards).
+  - `dynamic` — Smooth min–max gradient: `green`, `blue`, `red`, `orange`, `kpi` (full palette), `diverging` (red ← midpoint → green).
+- **Features**: Row/column totals (`show_totals`), row sorting by total (`sort_rows: desc`), null vs zero distinction (crosshatch pattern), pre-computed cell colors, auto-generated legend (chips for fixed, gradient bar for dynamic).
+- **Configuration**: `## HEATMAP` YAML in BI report `.md` files.
+- **Files**: `heatmap.go`, `ui/templates/partials/datagrid/heatmap.html`, `ui/static/css/heatmap.css`.
+- **Public API**: `datagrid.RenderHeatmap(w, records, cfg, title, lang)`.
+
 ### 📈 Future Roadmap: Graphs
 Upcoming versions will include integrated charting (Bar, Line, Pie) directly derived from Pivot/Grid datasets, leveraging the same streaming architecture.
 

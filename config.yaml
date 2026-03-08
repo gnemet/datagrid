@@ -1,6 +1,6 @@
 application:
   name: "datagrid"
-  version: "1.5.1"
+  version: "1.6.0"
   environment: "development"
   log_level: "debug"
   author: "Gabor Nemet"
