@@ -196,17 +196,32 @@
 
     .pivot2-warn {
         color: var(--dg-warn, #fab387);
-        background: rgba(250, 179, 135, 0.08);
+        background: var(--dg-warn-bg, rgba(250, 179, 135, 0.08));
     }
 
     .pivot2-danger {
         color: var(--dg-danger, #f38ba8);
-        background: rgba(243, 139, 168, 0.1);
+        background: var(--dg-danger-bg, rgba(243, 139, 168, 0.1));
         font-weight: 700;
     }
 
     .pivot2-ok {
         color: var(--dg-ok, #a6e3a1);
+    }
+
+    /* Utility classes for zero values */
+    .dg-zero-hide {
+        font-size: 0 !important;
+    }
+
+    .dg-zero-dash {
+        font-size: 0 !important;
+    }
+
+    .dg-zero-dash::after {
+        content: "-";
+        font-size: 0.85rem;
+        color: var(--dg-text-muted, #7f849c);
     }
 
     /* Column autocomplete */
