@@ -48,12 +48,16 @@
                 <i class="{{if $.IsPhosphor}}ph ph-{{else}}fas fa-{{end}}{{$disp}}"></i>
                 {{end}}
                 {{else if $lovItem.Label}}
-                {{$lovItem.Label}}
+                {{if .Link}}{{$href := buildLink .Link $lovItem.Label $row $.Config.Links}}<a href="{{$href}}"
+                    target="_blank"
+                    onclick="event.stopPropagation()">{{$lovItem.Label}}</a>{{else}}{{$lovItem.Label}}{{end}}
                 {{else}}
-                {{$val}}
+                {{if .Link}}{{$href := buildLink .Link $val $row $.Config.Links}}<a href="{{$href}}" target="_blank"
+                    onclick="event.stopPropagation()">{{$val}}</a>{{else}}{{$val}}{{end}}
                 {{end}}
                 {{else}}
-                {{$val}}
+                {{if .Link}}{{$href := buildLink .Link $val $row $.Config.Links}}<a href="{{$href}}" target="_blank"
+                    onclick="event.stopPropagation()">{{$val}}</a>{{else}}{{$val}}{{end}}
                 {{end}}
                 {{end}}
             </td>

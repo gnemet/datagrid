@@ -14,6 +14,7 @@ type Pivot2Config struct {
 	DefaultOpen int                `json:"default_open" yaml:"default_open"`                   // depth to auto-expand to (0=root only, 1=root+children)
 	Drilldown   *Pivot2Drilldown   `json:"drilldown,omitempty" yaml:"drilldown,omitempty"`     // master→slave drill-down link
 	BaseURL     string             `json:"base_url" yaml:"-"`                                  // host application execution endpoint (e.g. "?name=fekegy/")
+	Links       map[string]string  `json:"links,omitempty" yaml:"links,omitempty"`             // Host application links passed down to rendering context
 }
 
 // Pivot2Drilldown configures the master→slave drill-down link.
@@ -27,10 +28,10 @@ type Pivot2Drilldown struct {
 	URL     string            `json:"url" yaml:"-"`               // injected generic URL by the host application
 }
 
-// Pivot2Level defines a single hierarchy level.
 type Pivot2Level struct {
 	Column string `json:"column" yaml:"column"`          // field name in result set
 	Label  string `json:"label,omitempty" yaml:"label"` // display name for the level
+	Link   string `json:"link,omitempty" yaml:"link"`
 }
 
 // Pivot2Result holds the hierarchical pivot output.
@@ -57,6 +58,7 @@ type Pivot2Row struct {
 	CSSClasses     map[string]string      // CSS class per measure (from css_rules)
 	Children       []*Pivot2Row           // child rows (nil for leaf)
 	IsLeaf         bool                   // true for detail-level rows
+	Link           string                 // link template for this row
 	Record         map[string]interface{} // original record (only for leaves)
 	RecordFields   map[string]string      // first record's column values (for drilldown param resolution)
 }
@@ -208,6 +210,7 @@ func groupRecords(records []map[string]interface{}, levels []Pivot2Level, values
 			Depth:  depth,
 			Label:  key,
 			Key:    rowKey,
+			Link:   currentLevel.Link,
 			Values: make(map[string]float64),
 		}
 
@@ -390,6 +393,7 @@ func compactSingleChildNodes(tree []*Pivot2Row) []*Pivot2Row {
 			row.FormattedVals = child.FormattedVals
 			row.HiddenMeasures = child.HiddenMeasures
 			row.CSSClasses = child.CSSClasses
+			row.Link = child.Link
 			merged++
 		}
 		// Also merge if the single child IS a leaf
@@ -403,6 +407,7 @@ func compactSingleChildNodes(tree []*Pivot2Row) []*Pivot2Row {
 			row.HiddenMeasures = child.HiddenMeasures
 			row.CSSClasses = child.CSSClasses
 			row.Record = child.Record
+			row.Link = child.Link
 			merged++
 		}
 		// Fix depths of all descendants: they were N levels deeper, pull them up

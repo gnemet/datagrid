@@ -348,7 +348,14 @@
                     {{ else }}
                     <span class="pivot2-leaf-icon"></span>
                     {{ end }}
+                    {{ if $row.Link }}
+                    {{$href := buildLink $row.Link $row.Label $row.RecordFields $.Config.Links}}
+                    <a href="{{$href}}" target="_blank" onclick="event.stopPropagation()" class="pivot2-text"
+                        style="color:var(--dg-accent,#89b4fa)">{{
+                        $row.Label }}</a>
+                    {{ else }}
                     <span class="pivot2-text">{{ $row.Label }}</span>
+                    {{ end }}
                     {{ if and (eq $row.Depth 0) $res.Drilldown }}
                     <span class="pivot2-drilldown-icon"
                         onclick="event.stopPropagation(); Pivot2.drilldown(this.closest('tr'))"
