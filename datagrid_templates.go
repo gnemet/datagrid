@@ -196,5 +196,16 @@ func BuildLink(linkPattern string, val interface{}, row interface{}, globalLinks
 		}
 	}
 
+	// Second pass: resolve any remaining {key} placeholders from globalLinks
+	// This handles indirect references, e.g. link="{url_src}{value}" where
+	// url_src="{jira}" → after row substitution the result contains "{jira}"
+	// which must be resolved from globalLinks["jira"] → "https://jira.url/browse/"
+	for k, v := range globalLinks {
+		placeholder := fmt.Sprintf("{%s}", k)
+		if strings.Contains(result, placeholder) {
+			result = strings.ReplaceAll(result, placeholder, v)
+		}
+	}
+
 	return result
 }
