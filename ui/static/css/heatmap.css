@@ -1,0 +1,272 @@
+/* ============================================================
+   Heatmap Component — datagrid library
+   Standalone CSS for the heatmap visualization.
+   Dark/Light theme aware via CSS custom properties.
+   ============================================================ */
+
+/* --- Container --- */
+.datagrid-heatmap-container {
+    width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif;
+}
+
+/* --- Toolbar --- */
+.heatmap-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: var(--dg-surface-alt, #1e1e2e);
+    border-bottom: 1px solid var(--dg-border, #333);
+    font-size: 0.8rem;
+    color: var(--dg-text-secondary, #888);
+}
+
+.heatmap-info {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.heatmap-info i {
+    opacity: 0.6;
+}
+
+/* --- Legend bar --- */
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.heatmap-legend-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+}
+
+.heatmap-legend-bar {
+    width: 100px;
+    height: 10px;
+    border-radius: 5px;
+    background: linear-gradient(to right,
+        hsla(142, 50%, 12%, 0.3),
+        hsla(142, 80%, 40%, 1.0));
+}
+
+.heatmap-legend-bar[data-scale="blue"] {
+    background: linear-gradient(to right,
+        hsla(217, 50%, 12%, 0.3),
+        hsla(217, 80%, 40%, 1.0));
+}
+
+.heatmap-legend-bar[data-scale="red"] {
+    background: linear-gradient(to right,
+        hsla(0, 50%, 12%, 0.3),
+        hsla(0, 80%, 40%, 1.0));
+}
+
+.heatmap-legend-bar[data-scale="orange"] {
+    background: linear-gradient(to right,
+        hsla(30, 50%, 12%, 0.3),
+        hsla(30, 80%, 40%, 1.0));
+}
+
+.heatmap-legend-bar[data-scale="purple"] {
+    background: linear-gradient(to right,
+        hsla(270, 50%, 12%, 0.3),
+        hsla(270, 80%, 40%, 1.0));
+}
+
+.heatmap-legend-bar[data-scale="cyan"] {
+    background: linear-gradient(to right,
+        hsla(180, 50%, 12%, 0.3),
+        hsla(180, 80%, 40%, 1.0));
+}
+
+/* --- Scroll wrapper for wide grids --- */
+.heatmap-scroll-wrapper {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 75vh;
+}
+
+/* --- Table --- */
+.heatmap-table {
+    border-collapse: separate;
+    border-spacing: 2px;
+    width: max-content;
+    min-width: 100%;
+}
+
+/* --- Headers --- */
+.heatmap-col-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 0.3rem 0.2rem;
+    font-size: 0.65rem;
+    font-weight: 500;
+    text-align: center;
+    color: var(--dg-text-secondary, #999);
+    background: var(--dg-surface, #1a1a2e);
+    white-space: nowrap;
+    min-width: 2.2rem;
+    letter-spacing: 0.02em;
+}
+
+.heatmap-col-header span {
+    display: inline-block;
+    max-width: 5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.heatmap-row-header {
+    position: sticky;
+    left: 0;
+    top: 0;
+    z-index: 3;
+    background: var(--dg-surface, #1a1a2e);
+    min-width: 8rem;
+}
+
+/* --- Row Labels --- */
+.heatmap-row-label {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--dg-text, #e0e0e0);
+    background: var(--dg-surface, #1a1a2e);
+    white-space: nowrap;
+    border-right: 1px solid var(--dg-border, #333);
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.heatmap-link {
+    color: var(--dg-accent, #89b4fa);
+    text-decoration: none;
+}
+
+.heatmap-link:hover {
+    text-decoration: underline;
+}
+
+/* --- Cells --- */
+.heatmap-cell {
+    position: relative;
+    min-width: 2.2rem;
+    height: 1.8rem;
+    text-align: center;
+    vertical-align: middle;
+    border-radius: 3px;
+    cursor: default;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.heatmap-cell:hover {
+    transform: scale(1.15);
+    z-index: 5;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+}
+
+.heatmap-cell-empty {
+    background-color: var(--hm-empty, rgba(255, 255, 255, 0.03)) !important;
+}
+
+.heatmap-val {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+}
+
+/* --- Heatmap row hover highlight --- */
+.heatmap-row:hover .heatmap-row-label {
+    color: var(--dg-accent, #89b4fa);
+}
+
+/* ============================================================
+   Light Theme Overrides
+   ============================================================ */
+@media (prefers-color-scheme: light) {
+    .heatmap-toolbar {
+        background: var(--dg-surface-alt, #f5f5f7);
+        border-color: var(--dg-border, #ddd);
+        color: var(--dg-text-secondary, #666);
+    }
+
+    .heatmap-col-header {
+        color: var(--dg-text-secondary, #666);
+        background: var(--dg-surface, #fafafa);
+    }
+
+    .heatmap-row-header {
+        background: var(--dg-surface, #fafafa);
+    }
+
+    .heatmap-row-label {
+        color: var(--dg-text, #333);
+        background: var(--dg-surface, #fafafa);
+        border-right-color: var(--dg-border, #ddd);
+    }
+
+    .heatmap-cell-empty {
+        background-color: var(--hm-empty, rgba(0, 0, 0, 0.03)) !important;
+    }
+
+    .heatmap-val {
+        color: rgba(0, 0, 0, 0.75);
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+    }
+
+    .heatmap-cell:hover {
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.12);
+    }
+}
+
+/* ============================================================
+   Light Theme via class (for non-prefers-color-scheme setups)
+   ============================================================ */
+[data-theme="light"] .heatmap-toolbar,
+.theme-light .heatmap-toolbar {
+    background: var(--dg-surface-alt, #f5f5f7);
+    border-color: var(--dg-border, #ddd);
+    color: var(--dg-text-secondary, #666);
+}
+
+[data-theme="light"] .heatmap-col-header,
+.theme-light .heatmap-col-header {
+    color: var(--dg-text-secondary, #666);
+    background: var(--dg-surface, #fafafa);
+}
+
+[data-theme="light"] .heatmap-row-header,
+.theme-light .heatmap-row-header {
+    background: var(--dg-surface, #fafafa);
+}
+
+[data-theme="light"] .heatmap-row-label,
+.theme-light .heatmap-row-label {
+    color: var(--dg-text, #333);
+    background: var(--dg-surface, #fafafa);
+    border-right-color: var(--dg-border, #ddd);
+}
+
+[data-theme="light"] .heatmap-cell-empty,
+.theme-light .heatmap-cell-empty {
+    background-color: var(--hm-empty, rgba(0, 0, 0, 0.03)) !important;
+}
+
+[data-theme="light"] .heatmap-val,
+.theme-light .heatmap-val {
+    color: rgba(0, 0, 0, 0.75);
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}

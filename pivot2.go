@@ -13,8 +13,15 @@ type Pivot2Config struct {
 	Values      []PivotValueConfig `json:"values" yaml:"values"`                               // aggregated measures (reuse existing type)
 	DefaultOpen int                `json:"default_open" yaml:"default_open"`                   // depth to auto-expand to (0=root only, 1=root+children)
 	Drilldown   *Pivot2Drilldown   `json:"drilldown,omitempty" yaml:"drilldown,omitempty"`     // master→slave drill-down link
+	Entities    []Pivot2Entity     `json:"entities,omitempty" yaml:"entities,omitempty"`       // entity popover mappings (type → column)
 	BaseURL     string             `json:"base_url" yaml:"-"`                                  // host application execution endpoint (e.g. "?name=fekegy/")
 	Links       map[string]string  `json:"links,omitempty" yaml:"links,omitempty"`             // Host application links passed down to rendering context
+}
+
+// Pivot2Entity maps a column to an entity type for popover resolution.
+type Pivot2Entity struct {
+	Type  string `json:"type" yaml:"type"`    // "user" or "issue"
+	Field string `json:"field" yaml:"field"` // column name in the result set
 }
 
 // Pivot2Drilldown configures the master→slave drill-down link.
@@ -45,6 +52,7 @@ type Pivot2Result struct {
 	TotalCount          int                // total leaf record count
 	DefaultOpen         int                // depth to auto-expand to initially
 	Drilldown           *Pivot2Drilldown   // drill-down config (nil if not configured)
+	Entities            []Pivot2Entity     // entity popover mappings
 }
 
 // Pivot2Row is a node in the hierarchical tree.
@@ -167,6 +175,7 @@ func Pivot2Data(records []map[string]interface{}, cfg *Pivot2Config) *Pivot2Resu
 		TotalCount:          len(records),
 		DefaultOpen:         cfg.DefaultOpen,
 		Drilldown:           cfg.Drilldown,
+		Entities:            cfg.Entities,
 	}
 }
 

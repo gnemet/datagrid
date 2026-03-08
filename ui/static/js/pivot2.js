@@ -297,6 +297,8 @@
         _initContextMenu: function () {
             var w = document.getElementById('dg-pivot2-wrapper');
             if (!w) return;
+            if (w._ctxMenuBound) return; // prevent duplicate bindings
+            w._ctxMenuBound = true;
             w.addEventListener('contextmenu', function (e) {
                 var row = e.target.closest('tr.pivot2-row');
                 if (!row) return;
@@ -305,6 +307,8 @@
                 try { fields = JSON.parse(row.dataset.recordFields || '{}'); } catch (_) { }
                 var drilldown = null;
                 try { drilldown = JSON.parse(w.dataset.drilldown || 'null'); } catch (_) { }
+                var entities = null;
+                try { entities = JSON.parse(w.dataset.entities || 'null'); } catch (_) { }
                 w.dispatchEvent(new CustomEvent('pivot2:contextmenu', {
                     bubbles: true,
                     detail: {
@@ -312,7 +316,8 @@
                         row: row,
                         fields: fields,
                         depth: parseInt(row.dataset.depth || '0', 10),
-                        drilldown: drilldown
+                        drilldown: drilldown,
+                        entities: entities
                     }
                 }));
             });
@@ -458,4 +463,10 @@
     window.Pivot2 = Pivot2;
     Pivot2.initAutocomplete();
     Pivot2._initContextMenu();
+
+    // Re-init after HTMX swap (pivot2 wrapper is loaded dynamically)
+    document.body.addEventListener('htmx:afterSwap', function () {
+        Pivot2.initAutocomplete();
+        Pivot2._initContextMenu();
+    });
 })();

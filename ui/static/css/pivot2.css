@@ -76,6 +76,15 @@
         background: var(--dg-hover, rgba(137, 180, 250, 0.06));
     }
 
+    /* Stronger hover + context-menu cursor when entities are configured */
+    #dg-pivot2-wrapper[data-entities] .pivot2-row {
+        cursor: context-menu;
+    }
+
+    #dg-pivot2-wrapper[data-entities] .pivot2-row:hover {
+        background: var(--dg-hover-strong, rgba(137, 180, 250, 0.12));
+    }
+
     .pivot2-hidden {
         display: none;
     }

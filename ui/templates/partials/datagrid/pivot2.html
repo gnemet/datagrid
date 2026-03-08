@@ -2,7 +2,8 @@
 <link rel="stylesheet" href="/ui/static/css/pivot2.css">
 
 <div class="datagrid-pivot2-container" id="dg-pivot2-wrapper" data-default-open="{{ .Pivot2Result.DefaultOpen }}" {{ if
-    .Pivot2Result.Drilldown }} data-drilldown='{{ toJSON .Pivot2Result.Drilldown }}' {{ end }}>
+    .Pivot2Result.Drilldown }} data-drilldown='{{ toJSON .Pivot2Result.Drilldown }}' {{ end }}{{ if
+    .Pivot2Result.Entities }} data-entities='{{ toJSON .Pivot2Result.Entities }}' {{ end }}>
     {{ $res := .Pivot2Result }}
     {{ $measures := $res.Measures }}
     {{ $numMeasures := len $measures }}

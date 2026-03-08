@@ -1,0 +1,55 @@
+{{define "datagrid_heatmap"}}
+<link rel="stylesheet" href="/ui/static/css/heatmap.css">
+
+<div class="datagrid-heatmap-container" id="dg-heatmap-wrapper">
+    {{ $res := .HeatmapResult }}
+    {{ $scale := $res.ColorScale }}
+    {{ $empty := $res.EmptyColor }}
+
+    <div class="heatmap-toolbar">
+        <span class="heatmap-info">
+            <i class="fas fa-th"></i>
+            <span>{{ $res.TotalRows }} × {{ $res.TotalCols }}</span>
+        </span>
+        <span class="heatmap-legend">
+            <span class="heatmap-legend-label">Low</span>
+            <span class="heatmap-legend-bar" data-scale="{{ $scale }}"></span>
+            <span class="heatmap-legend-label">High</span>
+        </span>
+    </div>
+
+    <div class="heatmap-scroll-wrapper">
+        <table class="heatmap-table">
+            <thead>
+                <tr>
+                    <th class="heatmap-row-header"></th>
+                    {{ range $res.ColumnLabels }}
+                    <th class="heatmap-col-header"><span>{{ . }}</span></th>
+                    {{ end }}
+                </tr>
+            </thead>
+            <tbody>
+                {{ range $row := $res.Rows }}
+                <tr class="heatmap-row">
+                    <td class="heatmap-row-label">
+                        {{ if $row.Link }}
+                        <a href="{{ $row.Link }}" target="_blank" class="heatmap-link">{{ $row.Label }}</a>
+                        {{ else }}
+                        <span>{{ $row.Label }}</span>
+                        {{ end }}
+                    </td>
+                    {{ range $cell := $row.Cells }}
+                    <td class="heatmap-cell{{ if not $cell.HasData }} heatmap-cell-empty{{ end }}"
+                        style="{{ heatmapCellStyle $cell $scale $empty }}" title="{{ $cell.Tooltip }}">
+                        {{ if and $res.ShowValues $cell.HasData }}
+                        <span class="heatmap-val">{{ $cell.Formatted }}</span>
+                        {{ end }}
+                    </td>
+                    {{ end }}
+                </tr>
+                {{ end }}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}
