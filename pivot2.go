@@ -172,7 +172,7 @@ func Pivot2Data(records []map[string]interface{}, cfg *Pivot2Config) *Pivot2Resu
 		Tree:                tree,
 		GrandTotal:          grandTotal,
 		FormattedGrandTotal: formattedGrandTotal,
-		TotalCount:          len(records),
+		TotalCount:          len(tree),
 		DefaultOpen:         cfg.DefaultOpen,
 		Drilldown:           cfg.Drilldown,
 		Entities:            cfg.Entities,
