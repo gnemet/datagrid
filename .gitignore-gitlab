@@ -1,0 +1,15 @@
+# ── GitLab Extra Excludes ──────────────────────────
+# Base .gitignore is auto-inherited by gitlab-sync.sh.
+# This file only lists ADDITIONAL patterns for GitLab.
+
+# ── Secrets ────────────────────────────────────────
+- *.pem
+- *.key
+- *.p12
+
+# ── AI / Antigravity Agent Files ───────────────────
+- .gemini/
+- .agents/
+- .agent/
+- _agents/
+- _agent/

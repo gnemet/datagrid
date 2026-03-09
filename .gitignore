@@ -18,3 +18,4 @@ opt/**
 # Go
 vendor/
 go.sum
+config.yaml
