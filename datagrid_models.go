@@ -17,6 +17,7 @@ type UIColumn struct {
 	Record     bool      `json:"record"` // Include in detail sidebar
 	Display    string    `json:"display,omitempty"`
 	Icon       string    `json:"icon,omitempty"`
+	Link       string    `json:"link,omitempty"`
 	LOV        []LOVItem `json:"lov,omitempty"`
 	IsPivotRow bool      `json:"is_pivot_row,omitempty"`
 	IsPivotCol bool      `json:"is_pivot_col,omitempty"`
@@ -255,6 +256,7 @@ type DatagridColumnDef struct {
 	Display string            `json:"display,omitempty"`
 	Labels  map[string]string `json:"labels"`
 	Icon    string            `json:"icon,omitempty"`
+	Link    string            `json:"link,omitempty"`
 	LOV     interface{}       `json:"lov,omitempty"`
 }
 

@@ -378,9 +378,11 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 
 		var cssClass string
 		var displayPattern string
+		var linkPattern string
 		if override, ok := cat.Datagrid.Columns[col.Name]; ok {
 			cssClass = override.CSS
 			displayPattern = override.Display
+			linkPattern = override.Link
 		}
 
 		// Hardcode Elimination: Automatically add generic classes based on metadata
@@ -410,6 +412,7 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 			Record:   true,
 			Type:     strings.ToLower(col.Type),
 			Icon:     icon,
+			Link:     linkPattern,
 			LOV:      lovItems,
 		})
 
