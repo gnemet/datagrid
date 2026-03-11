@@ -158,19 +158,19 @@ func main() {
 				"Version": cfg.Application.Version,
 				"Author":  cfg.Application.Author,
 			},
-			"Title":            gridHandler.Catalog.Title,
-			"ListEndpoint":     "/list",
-			"Limit":            10,
-			"Offset":           0,
-			"UIColumns":        gridHandler.Columns,
-			"LangsJSON":        `["en", "hu"]`,
-			"CurrentLang":      "en",
-			"IconStyleLibrary": strings.TrimSpace(gridHandler.IconStyleLibrary),
-			"IsPhosphor":       strings.Contains(strings.ToLower(gridHandler.IconStyleLibrary), "phosphor"),
-			"HasJSONColumn":    hasJsonColumn,
-			"PivotEndpoint":    "/pivot",
-			"ViewMode":         gridHandler.Catalog.Type,
-			"Catalogs":         catalogs,
+			"Title":               gridHandler.Catalog.Title,
+			"ListEndpoint":        "/list",
+			"Limit":               10,
+			"Offset":              0,
+			"UIColumns":           gridHandler.Columns,
+			"LangsJSON":           `["en", "hu"]`,
+			"CurrentLang":         "en",
+			"IconStyleLibrary":    strings.TrimSpace(gridHandler.IconStyleLibrary),
+			"IsPhosphor":          strings.Contains(strings.ToLower(gridHandler.IconStyleLibrary), "phosphor"),
+			"HasJSONColumn":       hasJsonColumn,
+			"PivotEndpoint":       "/pivot",
+			"ViewMode":            gridHandler.Catalog.Type,
+			"Catalogs":            catalogs,
 			"CurrentCatalog":      catParam,
 			"LOVChooserThreshold": cfg.Application.LOVChooserThreshold,
 			"IsQueryMode":         gridHandler.IsQueryMode,
@@ -204,7 +204,22 @@ func main() {
 			"pivot_column_lov": "Personnel Analytics",
 			"pivot_multi_test": "Personnel Analytics & Pivot",
 		}
-		gridHandler.ServeHTTP(w, r)
+
+		params := gridHandler.ParseParams(r)
+		result, fetchErr := gridHandler.FetchData(params)
+		if fetchErr != nil {
+			slog.Error("Error fetching data", "error", fetchErr)
+			http.Error(w, fetchErr.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		tableTmpl, tErr := template.New("table.html").Funcs(funcMap).ParseFS(datagrid.UIAssets, "ui/templates/partials/datagrid/table.html")
+		if tErr != nil {
+			slog.Error("Error parsing template", "error", tErr)
+			http.Error(w, tErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		tableTmpl.ExecuteTemplate(w, "datagrid_table", result)
 
 	})
 
@@ -230,7 +245,22 @@ func main() {
 			"pivot_column_lov": "Personnel Analytics",
 			"pivot_multi_test": "Personnel Analytics & Pivot",
 		}
-		gridHandler.ServeHTTP(w, r)
+
+		params := gridHandler.ParseParams(r)
+		result, fetchErr := gridHandler.FetchData(params)
+		if fetchErr != nil {
+			slog.Error("Error fetching pivot data", "error", fetchErr)
+			http.Error(w, fetchErr.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		tableTmpl, tErr := template.New("table.html").Funcs(funcMap).ParseFS(datagrid.UIAssets, "ui/templates/partials/datagrid/table.html")
+		if tErr != nil {
+			slog.Error("Error parsing template", "error", tErr)
+			http.Error(w, tErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		tableTmpl.ExecuteTemplate(w, "datagrid_table", result)
 
 	})
 
@@ -250,7 +280,22 @@ func main() {
 		gridHandler.ListEndpoint = "/list?config=" + catParam
 		gridHandler.ExecuteEndpoint = "/execute?config=" + catParam
 		gridHandler.AppName = "Personnel Analytics"
-		gridHandler.ExecuteQuery(w, r)
+
+		params := gridHandler.ParseParams(r)
+		result, fetchErr := gridHandler.FetchData(params)
+		if fetchErr != nil {
+			slog.Error("Error executing query", "error", fetchErr)
+			http.Error(w, fetchErr.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		tableTmpl, tErr := template.New("table.html").Funcs(funcMap).ParseFS(datagrid.UIAssets, "ui/templates/partials/datagrid/table.html")
+		if tErr != nil {
+			slog.Error("Error parsing template", "error", tErr)
+			http.Error(w, tErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		tableTmpl.ExecuteTemplate(w, "datagrid_table", result)
 	})
 
 	fmt.Printf("Server starting at http://localhost:%s\n", cfg.Server.Port)
