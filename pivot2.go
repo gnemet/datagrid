@@ -15,8 +15,9 @@ type Pivot2Config struct {
 	DefaultOpen int                `json:"default_open" yaml:"default_open"`                   // depth to auto-expand to (0=root only, 1=root+children)
 	Drilldown   *Pivot2Drilldown   `json:"drilldown,omitempty" yaml:"drilldown,omitempty"`     // master→slave drill-down link
 	Entities    []Pivot2Entity     `json:"entities,omitempty" yaml:"entities,omitempty"`       // entity popover mappings (type → column)
-	BaseURL     string             `json:"base_url" yaml:"-"`                                  // host application execution endpoint (e.g. "?name=fekegy/")
-	Links       map[string]string  `json:"links,omitempty" yaml:"links,omitempty"`             // Host application links passed down to rendering context
+	BaseURL            string             `json:"base_url" yaml:"-"`                               // host application execution endpoint (e.g. "?name=fekegy/")
+	Links              map[string]string  `json:"links,omitempty" yaml:"links,omitempty"`          // Host application links passed down to rendering context
+	DisableCompression bool               `json:"disable_compression" yaml:"disable_compression"`  // If true, disables VS Code-style single-child path compression
 }
 
 // Pivot2Entity maps a column to an entity type for popover resolution.
@@ -102,8 +103,10 @@ func Pivot2Data(records []map[string]interface{}, cfg *Pivot2Config) *Pivot2Resu
 	// Recursively group
 	tree := groupRecords(records, cfg.Levels, cfg.Values, measures, 0, "")
 
-	// Compact single-child chains (VS Code-style folder merging)
-	tree = compactSingleChildNodes(tree)
+	// Compact single-child chains (VS Code-style folder merging) unless disabled
+	if !cfg.DisableCompression {
+		tree = compactSingleChildNodes(tree)
+	}
 
 	// Compute grand total
 	grandTotal := make(map[string]float64)

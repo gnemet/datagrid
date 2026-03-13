@@ -513,6 +513,38 @@ func NewHandlerFromData(db *sql.DB, data []byte, lang string) (*Handler, error) 
 	return h, nil
 }
 
+// ServeHTTP handles the grid lifecycle: metadata, filters, data, and templates.
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	params := h.ParseParams(r)
+	
+	result, err := h.Execute(params)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	result.Lang = h.Lang
+	result.CurrentLang = h.Lang
+	result.ListEndpoint = h.ListEndpoint
+
+	funcs := TemplateFuncs()
+	tmpl, err := template.New("datagrid").Funcs(funcs).ParseFS(UIAssets, 
+		"ui/templates/partials/datagrid/*.html",
+	)
+	if err != nil {
+		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.ExecuteTemplate(w, "datagrid_full", result); err != nil {
+		slog.Error("datagrid render error", "error", err)
+	}
+}
+
+// Execute performs the SQL query and returns the results using datagrid_sql.go logic
+func (h *Handler) Execute(params RequestParams) (*TableResult, error) {
+	return h.FetchData(params)
+}
+
 func processLovItem(item LOVItem, lang string) LOVItem {
 	li := LOVItem{
 		Value:    item.Value,
