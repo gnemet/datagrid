@@ -454,6 +454,12 @@
             });
             row.classList.add('pivot2-drilldown-active');
 
+            // Prevent self-navigation: if this window was previously opened as
+            // the drilldown target, window.name matches winName and window.open
+            // would navigate HERE instead of the other split window.
+            if (window.name === winName) {
+                window.name = '';
+            }
             var win = window.open(url, winName);
             if (win) {
                 win.focus();

@@ -2,6 +2,7 @@ package datagrid
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 )
@@ -162,7 +163,7 @@ func Pivot2Data(records []map[string]interface{}, cfg *Pivot2Config) *Pivot2Resu
 			}
 		}
 		if vc.Format != "" {
-			formattedGrandTotal[mKey] = fmt.Sprintf(vc.Format, grandTotal[mKey])
+			formattedGrandTotal[mKey] = formatValue(vc.Format, grandTotal[mKey])
 		}
 	}
 
@@ -249,7 +250,7 @@ func groupRecords(records []map[string]interface{}, levels []Pivot2Level, values
 			} else {
 				row.Values[mKey] = aggregateValue(groupRecs, vc)
 				if vc.Format != "" {
-					row.FormattedVals[mKey] = fmt.Sprintf(vc.Format, row.Values[mKey])
+					row.FormattedVals[mKey] = formatValue(vc.Format, row.Values[mKey])
 				}
 			}
 		}
@@ -266,7 +267,7 @@ func groupRecords(records []map[string]interface{}, levels []Pivot2Level, values
 			} else {
 				row.Values[mKey] = evaluateExpr(vc.Expr, row.Values)
 				if vc.Format != "" {
-					row.FormattedVals[mKey] = fmt.Sprintf(vc.Format, row.Values[mKey])
+					row.FormattedVals[mKey] = formatValue(vc.Format, row.Values[mKey])
 				}
 			}
 		}
@@ -689,4 +690,26 @@ func matchCSSRules(val float64, rules []PivotCSSRule) string {
 		}
 	}
 	return ""
+}
+
+// formatValue formats a numeric value using the given format string.
+// Special format "duration" converts decimal hours to H:MM (e.g. 7.5 → "7:30").
+// All other formats are passed through to fmt.Sprintf.
+func formatValue(format string, val float64) string {
+	if format == "duration" {
+		sign := ""
+		abs := val
+		if val < 0 {
+			sign = "-"
+			abs = -val
+		}
+		h := int(abs)
+		m := int(math.Round((abs - float64(h)) * 60))
+		if m == 60 {
+			h++
+			m = 0
+		}
+		return fmt.Sprintf("%s%d:%02d", sign, h, m)
+	}
+	return fmt.Sprintf(format, val)
 }
