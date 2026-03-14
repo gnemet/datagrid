@@ -49,7 +49,9 @@ var (
 )
 
 func main() {
-	_ = godotenv.Load()
+	// Load shared credentials as baseline, then env-specific overrides
+	_ = godotenv.Load("opt/envs/.env_shared")
+	_ = godotenv.Overload() // .env
 
 	dbMode = os.Getenv("DB_MODE")
 	if dbMode == "" {

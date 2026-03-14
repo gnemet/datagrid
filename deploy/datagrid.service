@@ -9,6 +9,7 @@ WorkingDirectory=/opt/datagrid
 ExecStart=/opt/datagrid/bin/datagrid-server
 Restart=always
 RestartSec=5
+EnvironmentFile=-/opt/datagrid/opt/envs/.env_shared
 EnvironmentFile=/opt/datagrid/.env
 
 [Install]

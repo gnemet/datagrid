@@ -35,7 +35,13 @@ cp "$SOURCE_FILE" .env
 ENV_NAME=$(grep "^ENV_NAME=" .env | cut -d'=' -f2)
 [ -z "$ENV_NAME" ] && ENV_NAME="$TARGET"
 
-echo "Switched environment to '$ENV_NAME' (source: $SOURCE_FILE)"
+SHARED_FILE="opt/envs/.env_shared"
+if [ -f "$SHARED_FILE" ]; then
+    SHARED_KEYS=$(grep -c '^[A-Z]' "$SHARED_FILE" 2>/dev/null || echo 0)
+    echo "Switched environment to '$ENV_NAME' (source: $SOURCE_FILE + $SHARED_FILE [$SHARED_KEYS shared keys])"
+else
+    echo "Switched environment to '$ENV_NAME' (source: $SOURCE_FILE)"
+    echo "Warning: $SHARED_FILE not found — shared credentials will be missing"
+fi
 grep "DB_HOST" .env || true
 grep "DB_PORT" .env || true
-grep "DB_NAME" .env || true

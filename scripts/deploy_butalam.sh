@@ -50,6 +50,13 @@ echo "Packaging assets..."
 # Hygiene: Strip deployment-only variables for the production .env
 grep -vE "REMOTE_SSH|REMOTE_PWD|DB_SSH_TUNNEL|Deployment" .env > dist/butalam/.env
 
+# Include shared credentials (Go code loads this as baseline)
+if [ -f "opt/envs/.env_shared" ]; then
+    mkdir -p dist/butalam/opt/envs
+    cp opt/envs/.env_shared dist/butalam/opt/envs/.env_shared
+    echo "Included .env_shared in package"
+fi
+
 # Add CATALOG_PATH (os.ReadFile doesn't support globs)
 FIRST_CATALOG=$(ls internal/data/catalog/*.json 2>/dev/null | head -1)
 if [ -n "$FIRST_CATALOG" ]; then
@@ -71,6 +78,7 @@ mkdir -p dist/butalam/logs
 cat > dist/butalam/run.sh << 'EOF'
 #!/bin/bash
 set -a
+[ -f opt/envs/.env_shared ] && source opt/envs/.env_shared
 source .env
 set +a
 ./bin/datagrid-server

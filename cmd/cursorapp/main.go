@@ -48,7 +48,9 @@ type Config struct {
 }
 
 func loadConfig() (*Config, error) {
-	_ = godotenv.Load()
+	// Load shared credentials as baseline, then env-specific overrides
+	_ = godotenv.Load("opt/envs/.env_shared")
+	_ = godotenv.Overload() // .env
 
 	data, err := os.ReadFile("config.yaml")
 	if err != nil {
